@@ -11,7 +11,7 @@ import SwiftUI
 struct PayShareApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }

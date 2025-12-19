@@ -29,12 +29,39 @@
 		0F3756A22EEF406000145411 /* PayShareUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PayShareUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		0F37568D2EEF405F00145411 /* PayShare */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PayShare;
-			sourceTree = "<group>";
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0F3756EB2EEF41BA00145411 /* Exceptions for "PayShare" folder in "PayShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/AppState.swift,
+				App/RootView.swift,
+				Assets.xcassets,
+				ContentView.swift,
+				Features/Activity/ActivityView.swift,
+				Features/Auth/LoginView.swift,
+				Features/Expenses/AddExpenseView.swift,
+				Features/Expenses/SplitEditorView.swift,
+				Features/Profile/ProfileView.swift,
+				Groups/GroupDetailView.swift,
+				Groups/GroupHealthCard.swift,
+				Groups/GroupListView.swift,
+				PayShareApp.swift,
+			);
+			target = 0F37568A2EEF405F00145411 /* PayShare */;
 		};
+		0F3756EC2EEF41BA00145411 /* Exceptions for "PayShare" folder in "PayShareTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				ContentView.swift,
+				Features/Expenses/AddExpenseView.swift,
+				Features/Expenses/SplitEditorView.swift,
+			);
+			target = 0F3756972EEF406000145411 /* PayShareTests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
 		0F37569B2EEF406000145411 /* PayShareTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PayShareTests;
@@ -43,6 +70,15 @@
 		0F3756A52EEF406000145411 /* PayShareUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PayShareUITests;
+			sourceTree = "<group>";
+		};
+		0F3756E72EEF41BA00145411 /* PayShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0F3756EB2EEF41BA00145411 /* Exceptions for "PayShare" folder in "PayShare" target */,
+				0F3756EC2EEF41BA00145411 /* Exceptions for "PayShare" folder in "PayShareTests" target */,
+			);
+			path = PayShare;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,7 +111,7 @@
 		0F3756822EEF405F00145411 = {
 			isa = PBXGroup;
 			children = (
-				0F37568D2EEF405F00145411 /* PayShare */,
+				0F3756E72EEF41BA00145411 /* PayShare */,
 				0F37569B2EEF406000145411 /* PayShareTests */,
 				0F3756A52EEF406000145411 /* PayShareUITests */,
 				0F37568C2EEF405F00145411 /* Products */,
@@ -107,9 +143,6 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				0F37568D2EEF405F00145411 /* PayShare */,
-			);
 			name = PayShare;
 			packageProductDependencies = (
 			);
@@ -132,6 +165,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				0F37569B2EEF406000145411 /* PayShareTests */,
+				0F3756E72EEF41BA00145411 /* PayShare */,
 			);
 			name = PayShareTests;
 			packageProductDependencies = (
