@@ -42,7 +42,7 @@
 				Features/Expenses/AddExpenseView.swift,
 				Features/Expenses/SplitEditorView.swift,
 				Features/Profile/ProfileView.swift,
-				Groups/FairnessInsightsView.swift,
+				"Groups/FairnessInsightsView .swift",
 				Groups/GroupDetailView.swift,
 				Groups/GroupHealthCard.swift,
 				Groups/GroupListView.swift,

@@ -2,24 +2,28 @@ import SwiftUI
 
 struct GroupHealthCard: View {
 
-    // MARK: - Member model
     struct Member: Identifiable {
         let id = UUID()
         let name: String
-        let delta: Int   // + overpaid, - underpaid
+        let delta: Int   // + = overpaid, - = underpaid
     }
 
-    // MARK: - Inputs
-    let score: Int              // 0–100
+    let score: Int
     let members: [Member]
 
-    // MARK: - Animation
-    @State private var animatedScore: CGFloat = 0
+    // MARK: - Derived insight
+    private var insight: String {
+        if score >= 80 {
+            return "Expenses are fairly shared recently."
+        } else {
+            return "One or more members are paying more than their share."
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
 
-            // MARK: - Header
+            // Header
             HStack {
                 Label("Fairness Score", systemImage: "scale.3d")
                     .font(.headline)
@@ -35,11 +39,11 @@ struct GroupHealthCard: View {
                     .clipShape(Capsule())
             }
 
-            Text(scoreDescription)
+            Text(insight)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            // MARK: - Progress Bar (Animated)
+            // Progress bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -49,24 +53,17 @@ struct GroupHealthCard: View {
                     Capsule()
                         .fill(scoreColor)
                         .frame(
-                            width: geo.size.width * animatedScore,
+                            width: geo.size.width * CGFloat(score) / 100,
                             height: 10
-                        )
-                        .animation(
-                            .spring(response: 0.6, dampingFraction: 0.8),
-                            value: animatedScore
                         )
                 }
             }
             .frame(height: 10)
-            .onAppear {
-                animatedScore = CGFloat(score) / 100
-            }
 
-            // MARK: - Members
+            // Members
             HStack(spacing: 12) {
                 ForEach(members) { member in
-                    HStack(spacing: 6) {
+                    VStack(spacing: 6) {
                         Circle()
                             .fill(Color.blue.opacity(0.15))
                             .frame(width: 32, height: 32)
@@ -85,12 +82,12 @@ struct GroupHealthCard: View {
                 Spacer()
             }
 
-            // MARK: - Navigation
+            // Navigation
             NavigationLink {
                 FairnessInsightsView(
-                    insight: scoreDescription,
-                    overpayer: members.first?.name ?? "—",
-                    underpayer: members.last?.name ?? "—"
+                    insight: insight,
+                    overpayer: members.first?.name ?? "-",
+                    underpayer: members.last?.name ?? "-"
                 )
             } label: {
                 Text("View fairness insights")
@@ -100,7 +97,7 @@ struct GroupHealthCard: View {
         }
         .padding(16)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 22))
         .shadow(color: .black.opacity(0.05), radius: 10, y: 6)
     }
 
@@ -116,12 +113,6 @@ struct GroupHealthCard: View {
 
     private var scoreLabel: String {
         score >= 80 ? "Balanced \(score)" : "Unbalanced \(score)"
-    }
-
-    private var scoreDescription: String {
-        score >= 80
-        ? "Expenses are fairly shared in the last 7 days."
-        : "One or more members are overpaying."
     }
 
     private func deltaText(for value: Int) -> String {
