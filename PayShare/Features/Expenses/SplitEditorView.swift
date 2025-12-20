@@ -1,129 +1,91 @@
 import SwiftUI
 
 struct SplitEditorView: View {
-    enum SplitMode: String, CaseIterable, Identifiable {
-        case equal = "Equal"
-        case exact = "Exact"
-        case percent = "Percent"
-        var id: String { rawValue }
-    }
-
-    let members: [String]
-    @Binding var mode: SplitMode
-
-    // Exact amounts per member
-    @Binding var exact: [String: Double]
-
-    // Percent per member (0-100)
-    @Binding var percent: [String: Double]
-
     let totalAmount: Double
 
-    private var equalShare: Double {
-        guard !members.isEmpty else { return 0 }
-        return totalAmount / Double(members.count)
-    }
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var splits: [SplitRow] = [
+        .init(name: "You", isIncluded: true, amount: 0),
+        .init(name: "Alex", isIncluded: true, amount: 0),
+        .init(name: "Sam", isIncluded: true, amount: 0)
+    ]
 
     var body: some View {
-        VStack(spacing: 12) {
-            Picker("Split", selection: $mode) {
-                ForEach(SplitMode.allCases) { m in
-                    Text(m.rawValue).tag(m)
+        NavigationStack {
+            Form {
+                // MARK: - Total
+                Section("Total") {
+                    Text("₹\(Int(totalAmount))")
+                        .font(.headline)
+                }
+
+                // MARK: - Split Members
+                Section("Split Between") {
+                    ForEach($splits) { $split in
+                        HStack {
+                            Toggle(split.name, isOn: $split.isIncluded)
+                                .toggleStyle(.switch)
+
+                            Spacer()
+
+                            TextField(
+                                "₹0",
+                                value: $split.amount,
+                                format: .number
+                            )
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                            .disabled(!split.isIncluded)
+                            .foregroundStyle(
+                                split.isIncluded ? .primary : .secondary
+                            )
+                        }
+                    }
+                }
+
+                // MARK: - Actions
+                Section {
+                    Button("Split Equally") {
+                        splitEqually()
+                    }
+                    .disabled(includedSplits.count == 0)
                 }
             }
-            .pickerStyle(.segmented)
-
-            if mode == .equal {
-                List {
-                    ForEach(members, id: \.self) { m in
-                        HStack {
-                            Text(m)
-                            Spacer()
-                            Text(currency(equalShare))
-                                .foregroundStyle(.secondary)
-                        }
+            .navigationTitle("Split")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
                     }
                 }
-                .frame(height: min(300, CGFloat(members.count) * 52))
-
-            } else if mode == .exact {
-                List {
-                    ForEach(members, id: \.self) { m in
-                        HStack {
-                            Text(m)
-                            Spacer()
-                            TextField("0", value: bindingExact(m), format: .number)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 120)
-                        }
-                    }
-
-                    HStack {
-                        Text("Remaining")
-                        Spacer()
-                        Text(currency(remainingExact))
-                            .foregroundStyle(remainingExact == 0 ? .green : .red)
-                    }
-                }
-                .frame(height: min(340, CGFloat(members.count + 1) * 52))
-
-            } else {
-                List {
-                    ForEach(members, id: \.self) { m in
-                        HStack {
-                            Text(m)
-                            Spacer()
-                            TextField("0", value: bindingPercent(m), format: .number)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 80)
-                            Text("%").foregroundStyle(.secondary)
-                        }
-                    }
-
-                    HStack {
-                        Text("Total %")
-                        Spacer()
-                        Text("\(Int(totalPercent))%")
-                            .foregroundStyle(totalPercent == 100 ? .green : .red)
-                    }
-                }
-                .frame(height: min(340, CGFloat(members.count + 1) * 52))
             }
         }
     }
 
-    private var remainingExact: Double {
-        let sum = members.reduce(0.0) { $0 + (exact[$1] ?? 0) }
-        return (totalAmount - sum).roundedTo2()
+    // MARK: - Helpers
+
+    private var includedSplits: [Int] {
+        splits.indices.filter { splits[$0].isIncluded }
     }
 
-    private var totalPercent: Double {
-        members.reduce(0.0) { $0 + (percent[$1] ?? 0) }.roundedTo2()
-    }
+    private func splitEqually() {
+        let active = includedSplits
+        guard !active.isEmpty else { return }
 
-    private func bindingExact(_ member: String) -> Binding<Double> {
-        Binding<Double>(
-            get: { exact[member] ?? 0 },
-            set: { exact[member] = $0 }
-        )
-    }
+        let equalAmount = totalAmount / Double(active.count)
 
-    private func bindingPercent(_ member: String) -> Binding<Double> {
-        Binding<Double>(
-            get: { percent[member] ?? 0 },
-            set: { percent[member] = $0 }
-        )
-    }
-
-    private func currency(_ value: Double) -> String {
-        "₹" + String(format: "%.2f", value)
+        for i in splits.indices {
+            splits[i].amount = splits[i].isIncluded ? equalAmount : 0
+        }
     }
 }
 
-private extension Double {
-    func roundedTo2() -> Double {
-        (self * 100).rounded() / 100
-    }
+struct SplitRow: Identifiable {
+    let id = UUID()
+    let name: String
+    var isIncluded: Bool
+    var amount: Double
 }
