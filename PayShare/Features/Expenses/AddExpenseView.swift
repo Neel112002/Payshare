@@ -1,77 +1,118 @@
 import SwiftUI
 
 struct AddExpenseView: View {
+
+    // MARK: - Inputs
     let groupName: String
     @Environment(\.dismiss) private var dismiss
 
-    @State private var title = ""
-    @State private var amountText = ""
-    @State private var paidBy = "You"
+    // MARK: - Form state
+    @State private var titleText: String = ""
+    @State private var amountText: String = ""
+    @State private var paidByYou: Bool = true
 
-    private let members = ["You", "Alex", "Sam"]
-
-    @State private var splitMode: SplitEditorView.SplitMode = .equal
-    @State private var exact: [String: Double] = [:]
-    @State private var percent: [String: Double] = [:]
-
-    private var amount: Double {
-        Double(amountText.replacingOccurrences(of: ",", with: "")) ?? 0
-    }
+    // MARK: - Impact preview
+    @State private var impactScore: Int?
 
     var body: some View {
         NavigationStack {
             Form {
+
+                // MARK: - Group
                 Section("Group") {
                     Text(groupName)
+                        .font(.headline)
                 }
 
-                Section("Expense") {
-                    TextField("Title (e.g., Dinner)", text: $title)
+                // MARK: - Expense
+                Section("Expense details") {
+                    TextField("Title (e.g., Dinner)", text: $titleText)
 
                     TextField("Amount", text: $amountText)
                         .keyboardType(.decimalPad)
+                        .onChange(of: amountText) { _ in
+                            calculateImpact()
+                        }
 
-                    Picker("Paid by", selection: $paidBy) {
-                        ForEach(members, id: \.self) { Text($0) }
-                    }
+                    Toggle("Paid by you", isOn: $paidByYou)
                 }
 
-                Section("Split") {
-                    SplitEditorView(
-                        members: members,
-                        mode: $splitMode,
-                        exact: $exact,
-                        percent: $percent,
-                        totalAmount: amount
-                    )
-                    .padding(.vertical, 6)
-                }
+                // MARK: - Impact Preview (THE MAGIC)
+                if let impactScore {
+                    Section {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(.green)
 
-                Section {
-                    Button("Save Expense") {
-                        // Frontend-only: print what user selected
-                        print("Expense:", title, "Amount:", amount, "PaidBy:", paidBy, "Mode:", splitMode.rawValue)
-                        print("Exact:", exact)
-                        print("Percent:", percent)
-                        dismiss()
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Expense impact")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Text("This will improve group balance by ~\(impactScore)%")
+                                    .font(.footnote.bold())
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .disabled(title.isEmpty || amount <= 0)
                 }
             }
             .navigationTitle("Add Expense")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+
+                // Cancel
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                // Save
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveExpense()
+                        dismiss()
+                    }
+                    .disabled(!isFormValid)
                 }
             }
         }
-        .onAppear {
-            // Defaults for split inputs
-            for m in members {
-                exact[m] = 0
-                percent[m] = 0
-            }
+    }
+
+    // MARK: - Validation
+
+    private var isFormValid: Bool {
+        !titleText.isEmpty && Double(amountText) != nil
+    }
+
+    // MARK: - Impact logic (frontend-only for now)
+
+    private func calculateImpact() {
+        guard let amount = Double(amountText), amount > 0 else {
+            impactScore = nil
+            return
         }
+
+        /*
+         Simple heuristic (frontend mock):
+         Bigger expenses usually have more balancing impact.
+         This WILL be replaced by backend logic later.
+        */
+        let rawScore = Int(amount / 10)
+        impactScore = min(max(rawScore, 3), 25)
+    }
+
+    // MARK: - Save (mock)
+
+    private func saveExpense() {
+        print("""
+        Expense saved:
+        Title: \(titleText)
+        Amount: \(amountText)
+        Paid by you: \(paidByYou)
+        Impact: \(impactScore ?? 0)%
+        """)
     }
 }
