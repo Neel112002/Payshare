@@ -1,57 +1,76 @@
 import SwiftUI
 
 struct ActivityView: View {
-    struct ActivityItem: Identifiable {
-        let id = UUID()
-        let title: String
-        let subtitle: String
-        let amount: String
-        let isPositive: Bool
-        let time: String
-    }
 
-    let items: [ActivityItem] = [
-        .init(title: "Dinner", subtitle: "Trip to Toronto • paid by You", amount: "+₹140", isPositive: true, time: "2h ago"),
-        .init(title: "Uber", subtitle: "Roommates • paid by Alex", amount: "-₹60", isPositive: false, time: "Yesterday"),
-        .init(title: "Groceries", subtitle: "Roommates • paid by You", amount: "+₹90", isPositive: true, time: "2 days ago")
-    ]
+    @EnvironmentObject private var expenseStore: ExpenseStore
 
     var body: some View {
-        List {
-            Section {
-                ForEach(items) { item in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle().fill(.gray.opacity(0.15))
-                            Image(systemName: "receipt")
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 42, height: 42)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title).font(.headline)
-                            Text(item.subtitle)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text(item.amount)
-                                .font(.headline)
-                                .foregroundStyle(item.isPositive ? .green : .red)
-                            Text(item.time)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+        NavigationStack {
+            List {
+                if expenseStore.expenses.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(expenseStore.expenses) { expense in
+                        activityRow(expense)
                     }
-                    .padding(.vertical, 6)
                 }
-            } header: {
-                Text("Recent Activity")
             }
+            .listStyle(.plain)
+            .navigationTitle("Activity")
         }
-        .navigationTitle("Activity")
+    }
+
+    // MARK: - Row
+
+    private func activityRow(_ expense: Expense) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(expense.title)
+                    .font(.headline)
+
+                Spacer()
+
+                Text("₹\(Int(expense.totalAmount))")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+            }
+
+            HStack {
+                Text(expense.groupName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text("Paid by \(expense.paidBy)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(expense.createdAt, style: .relative)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "clock")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+
+            Text("No activity yet")
+                .font(.headline)
+
+            Text("Add an expense to see it here.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
+        .listRowSeparator(.hidden)
     }
 }

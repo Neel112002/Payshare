@@ -3,181 +3,199 @@ import SwiftUI
 struct GroupDetailView: View {
     let groupName: String
 
+    @EnvironmentObject private var expenseStore: ExpenseStore
     @State private var showAddExpense = false
-    @State private var showSettleSheet = false
-    @State private var showSuccessSheet = false
-    @State private var selectedMethod: SettleMethod = .upi
 
-    private let youOweAmount: Double = 420
-    private let lastUpdatedText: String = "2h ago"
+    // MARK: - Derived Data
 
-    private let suggestions: [(name: String, amount: Double)] = [
-        ("Alex", 300),
-        ("Sam", 120)
-    ]
-
-    private let expenses: [(icon: String, title: String, subtitle: String, amount: Int, positive: Bool, time: String)] = [
-        ("fork.knife", "Dinner", "You paid", 420, false, "2h ago"),
-        ("car.fill", "Uber", "Paid by Alex", 180, true, "Yesterday"),
-        ("cart.fill", "Groceries", "You paid", 270, false, "2 days ago")
-    ]
-
-    private var settleTotal: Int {
-        suggestions.reduce(0) { $0 + Int($1.amount) }
+    private var groupExpenses: [Expense] {
+        expenseStore.expenses.filter { $0.groupName == groupName }
     }
+
+    private var totalSpent: Double {
+        groupExpenses.reduce(0) { $0 + $1.totalAmount }
+    }
+
+    private var fairnessBalances: [FairnessBalance] {
+        FairnessCalculator.calculate(expenses: groupExpenses)
+    }
+
+    // MARK: - View
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 12) {
+        ScrollView {
+            VStack(spacing: 16) {
 
-                heroCard
+                // Header
+                headerCard
 
-                // ✅ FAIRNESS CARD (REAL ONE)
-                GroupHealthCard(
-                    score: 78,
-                    members: [
-                        .init(name: "Neel", delta: 520),
-                        .init(name: "Alex", delta: -410)
-                    ]
-                )
+                // Fairness / Health
+                fairnessCard
 
+                // Settlement
                 settlementCard
-                recentExpensesCard
 
-                Spacer(minLength: 20)
+                // Expenses
+                expensesCard
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 110)
+            .padding(16)
         }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("Details")
+        .navigationTitle(groupName)
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) { bottomCTA }
-        .sheet(isPresented: $showAddExpense) {
-            AddExpenseView(groupName: groupName)
-        }
-        .sheet(isPresented: $showSettleSheet) {
-            settleSheet
-        }
-        .sheet(isPresented: $showSuccessSheet) {
-            settleSuccessSheet
-        }
-    }
-
-    // MARK: Hero
-
-    private var heroCard: some View {
-        card {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(groupName).font(.title2.bold())
-                Text("You owe ₹\(Int(youOweAmount))")
-                    .font(.headline)
-                    .foregroundStyle(.red)
-
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     showAddExpense = true
                 } label: {
-                    Label("Add Expense", systemImage: "plus")
-                        .frame(maxWidth: .infinity)
+                    Image(systemName: "plus")
                 }
-                .buttonStyle(.borderedProminent)
             }
+        }
+        .sheet(isPresented: $showAddExpense) {
+            AddExpenseView(groupName: groupName)
+                .environmentObject(expenseStore)
         }
     }
 
-    // MARK: Settlement
+    // MARK: - Header Card
+
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Total spent")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Text("₹\(Int(totalSpent))")
+                .font(.largeTitle.bold())
+
+            Text("\(groupExpenses.count) expenses")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    // MARK: - Fairness Card (REAL LOGIC)
+
+    private var fairnessCard: some View {
+        GroupHealthCard(
+            score: fairnessScore,
+            members: fairnessBalances.map {
+                .init(
+                    name: $0.name,
+                    delta: Int($0.balance)
+                )
+            }
+        )
+    }
+
+    private var fairnessScore: Int {
+        let totalImbalance = fairnessBalances
+            .map { abs($0.balance) }
+            .reduce(0, +)
+
+        if totalImbalance == 0 { return 100 }
+
+        return max(0, 100 - Int(totalImbalance))
+    }
+
+    // MARK: - Settlement Card (REAL LOGIC)
 
     private var settlementCard: some View {
-        card {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Suggested settlement", systemImage: "sparkles")
+        let debtors = fairnessBalances.filter { $0.balance < 0 }
+        let creditors = fairnessBalances.filter { $0.balance > 0 }
+
+        guard
+            let debtor = debtors.first,
+            let creditor = creditors.first
+        else {
+            return AnyView(EmptyView())
+        }
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Suggested settlement")
                     .font(.headline)
 
-                ForEach(suggestions, id: \.name) { s in
-                    HStack {
-                        Text("Pay \(s.name)")
-                        Spacer()
-                        Text("₹\(Int(s.amount))").font(.headline)
-                    }
-                }
+                Text(
+                    "\(debtor.name) owes \(creditor.name) ₹\(Int(abs(debtor.balance)))"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
-        }
-    }
-
-    // MARK: Expenses
-
-    private var recentExpensesCard: some View {
-        card {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Recent expenses").font(.headline)
-
-                ForEach(expenses, id: \.title) { e in
-                    HStack {
-                        Image(systemName: e.icon)
-                        VStack(alignment: .leading) {
-                            Text(e.title).bold()
-                            Text(e.subtitle).font(.footnote).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing) {
-                            Text("₹\(e.amount)")
-                                .foregroundStyle(e.positive ? .green : .red)
-                            Text(e.time).font(.footnote).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: Bottom CTA
-
-    private var bottomCTA: some View {
-        Button {
-            showSettleSheet = true
-        } label: {
-            HStack {
-                Text("Settle Now").bold()
-                Spacer()
-                Text("₹\(settleTotal)").bold()
-            }
-            .padding()
-            .foregroundStyle(.white)
-            .background(LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-    }
-
-    // MARK: Sheets
-
-    private var settleSheet: some View {
-        NavigationStack {
-            Text("Settlement flow coming next")
-                .navigationTitle("Settle")
-        }
-    }
-
-    private var settleSuccessSheet: some View {
-        NavigationStack {
-            Text("Settled successfully")
-        }
-    }
-
-    // MARK: Card Helper
-
-    @ViewBuilder
-    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 22))
-            .shadow(color: .black.opacity(0.05), radius: 10, y: 6)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        )
     }
-}
 
-private enum SettleMethod {
-    case upi, card, cash
+    // MARK: - Expenses Card
+
+    private var expensesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Expenses")
+                .font(.headline)
+
+            if groupExpenses.isEmpty {
+                emptyState
+            } else {
+                ForEach(groupExpenses) { expense in
+                    expenseRow(expense)
+
+                    if expense.id != groupExpenses.last?.id {
+                        Divider()
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    // MARK: - Expense Row
+
+    private func expenseRow(_ expense: Expense) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(expense.title)
+                    .font(.headline)
+
+                Text("Paid by \(expense.paidBy)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("₹\(Int(expense.totalAmount))")
+                    .font(.headline)
+
+                Text(expense.createdAt, style: .date)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "tray")
+                .font(.system(size: 32))
+                .foregroundStyle(.secondary)
+
+            Text("No expenses yet")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+    }
 }

@@ -47,9 +47,11 @@
 				Groups/GroupHealthCard.swift,
 				Groups/GroupListView.swift,
 				Models/Expense.swift,
+				Models/FairnessBalance.swift,
 				Models/SplitResult.swift,
 				PayShareApp.swift,
 				Storage/ExpenseStore.swift,
+				Storage/FairnessCalculator.swift,
 			);
 			target = 0F37568A2EEF405F00145411 /* PayShare */;
 		};
