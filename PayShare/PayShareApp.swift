@@ -1,17 +1,15 @@
-//
-//  PayShareApp.swift
-//  PayShare
-//
-//  Created by Neel Shah on 2025-12-14.
-//
-
 import SwiftUI
+import Combine
 
 @main
 struct PayShareApp: App {
+
+    @StateObject private var expenseStore = ExpenseStore()
+
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environmentObject(expenseStore)
         }
     }
 }

@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct SplitEditorView: View {
+
     let totalAmount: Double
+    let onSave: (SplitResult) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -14,18 +16,16 @@ struct SplitEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // MARK: - Total
+
                 Section("Total") {
                     Text("₹\(Int(totalAmount))")
                         .font(.headline)
                 }
 
-                // MARK: - Split Members
                 Section("Split Between") {
                     ForEach($splits) { $split in
                         HStack {
                             Toggle(split.name, isOn: $split.isIncluded)
-                                .toggleStyle(.switch)
 
                             Spacer()
 
@@ -34,31 +34,25 @@ struct SplitEditorView: View {
                                 value: $split.amount,
                                 format: .number
                             )
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.decimalPad)
                             .frame(width: 80)
+                            .multilineTextAlignment(.trailing)
                             .disabled(!split.isIncluded)
-                            .foregroundStyle(
-                                split.isIncluded ? .primary : .secondary
-                            )
                         }
                     }
                 }
 
-                // MARK: - Actions
                 Section {
                     Button("Split Equally") {
                         splitEqually()
                     }
-                    .disabled(includedSplits.count == 0)
                 }
             }
             .navigationTitle("Split")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        dismiss()
+                        save()
                     }
                 }
             }
@@ -67,21 +61,38 @@ struct SplitEditorView: View {
 
     // MARK: - Helpers
 
-    private var includedSplits: [Int] {
-        splits.indices.filter { splits[$0].isIncluded }
-    }
-
     private func splitEqually() {
-        let active = includedSplits
+        let active = splits.filter { $0.isIncluded }
         guard !active.isEmpty else { return }
 
-        let equalAmount = totalAmount / Double(active.count)
+        let perPerson = totalAmount / Double(active.count)
 
         for i in splits.indices {
-            splits[i].amount = splits[i].isIncluded ? equalAmount : 0
+            splits[i].amount = splits[i].isIncluded ? perPerson : 0
         }
     }
+
+    private func save() {
+        let participants = splits
+            .filter { $0.isIncluded }
+            .map {
+                ParticipantSplit(
+                    name: $0.name,
+                    amount: $0.amount
+                )
+            }
+
+        let result = SplitResult(
+            total: totalAmount,
+            splits: participants
+        )
+
+        onSave(result)
+        dismiss()
+    }
 }
+
+// MARK: - Local UI Model
 
 struct SplitRow: Identifiable {
     let id = UUID()

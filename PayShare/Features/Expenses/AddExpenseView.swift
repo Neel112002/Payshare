@@ -4,12 +4,14 @@ struct AddExpenseView: View {
     let groupName: String
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var expenseStore: ExpenseStore
 
     @State private var title: String = ""
     @State private var amountText: String = ""
     @State private var paidBy: String = "You"
 
     @State private var showSplitEditor = false
+    @State private var splitResult: SplitResult?
 
     var body: some View {
         NavigationStack {
@@ -39,25 +41,17 @@ struct AddExpenseView: View {
                         HStack {
                             Text("Split")
                             Spacer()
-                            Text("Equal")
+                            Text(splitSummary)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
             }
             .navigationTitle("Add Expense")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        // UI-only for Phase 1
-                        dismiss()
+                        saveExpense()
                     }
                     .disabled(title.isEmpty || amountText.isEmpty)
                 }
@@ -65,8 +59,41 @@ struct AddExpenseView: View {
             .sheet(isPresented: $showSplitEditor) {
                 SplitEditorView(
                     totalAmount: Double(amountText) ?? 0
-                )
+                ) { result in
+                    splitResult = result
+                }
             }
         }
+    }
+
+    // MARK: - Save
+
+    private func saveExpense() {
+        let total = Double(amountText) ?? 0
+
+        let splits = splitResult?.splits ?? [
+            ParticipantSplit(
+                name: "Everyone",
+                amount: total
+            )
+        ]
+
+        let expense = Expense(
+            id: UUID(),
+            groupName: groupName,
+            title: title,
+            totalAmount: total,
+            paidBy: paidBy,
+            splits: splits,
+            createdAt: Date()
+        )
+
+        expenseStore.add(expense)
+        dismiss()
+    }
+
+    private var splitSummary: String {
+        guard let splitResult else { return "Equal" }
+        return "\(splitResult.splits.count) people"
     }
 }
