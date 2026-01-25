@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
-from app.models import Settlement
-from app.models import Settlement
 
 from app.database import get_db
 from app import schemas, crud
@@ -19,7 +17,7 @@ router = APIRouter(
 # -------------------------------------------------
 # Create Group
 # -------------------------------------------------
-@router.post("", response_model=schemas.GroupOut)
+@router.post("/", response_model=schemas.GroupOut)
 def create_group(
     group: schemas.GroupCreate,
     db: Session = Depends(get_db)
@@ -30,7 +28,7 @@ def create_group(
 # -------------------------------------------------
 # List Groups
 # -------------------------------------------------
-@router.get("", response_model=List[schemas.GroupOut])
+@router.get("/", response_model=List[schemas.GroupOut])
 def list_groups(db: Session = Depends(get_db)):
     return crud.get_groups(db)
 
@@ -43,8 +41,7 @@ def get_group_expenses(
     group_id: UUID,
     db: Session = Depends(get_db)
 ):
-    expenses = crud.get_expenses_by_group(db, group_id)
-    return expenses
+    return crud.get_expenses_by_group(db, group_id)
 
 
 # -------------------------------------------------
@@ -67,20 +64,17 @@ def get_group_fairness(
             "balances": {}
         }
 
-    # Convert DB objects → plain dicts for fairness logic
-    expense_data = []
-    for e in expenses:
-        expense_data.append({
+    expense_data = [
+        {
             "paid_by": e.paid_by,
             "total_amount": e.total_amount,
             "splits": [
-                {
-                    "name": s.name,
-                    "amount": s.amount
-                }
+                {"name": s.name, "amount": s.amount}
                 for s in e.splits
             ]
-        })
+        }
+        for e in expenses
+    ]
 
     balances = calculate_balances(expense_data)
     score = fairness_score(balances)
@@ -90,24 +84,10 @@ def get_group_fairness(
         "balances": balances
     }
 
-def save_settlements(db, group_id, settlements):
-    db.query(Settlement).filter(
-        Settlement.group_id == group_id
-    ).delete()
 
-    for s in settlements:
-        db.add(
-            Settlement(
-                id=uuid.uuid4(),
-                group_id=group_id,
-                from_user=s["from"],
-                to_user=s["to"],
-                amount=s["amount"]
-            )
-        )
-
-    db.commit()
-
+# -------------------------------------------------
+# Settlements / Settle Up
+# -------------------------------------------------
 @router.get("/{group_id}/settlements")
 def get_group_settlements(
     group_id: UUID,
@@ -119,20 +99,25 @@ def get_group_settlements(
         .all()
     )
 
-    expense_data = []
-    for e in expenses:
-        expense_data.append({
+    if not expenses:
+        return []
+
+    expense_data = [
+        {
             "paid_by": e.paid_by,
             "total_amount": e.total_amount,
             "splits": [
                 {"name": s.name, "amount": s.amount}
                 for s in e.splits
             ]
-        })
+        }
+        for e in expenses
+    ]
 
     balances = calculate_balances(expense_data)
     settlements = calculate_settlements(balances)
 
+    # Persist settlements
     crud.save_settlements(db, group_id, settlements)
 
     return settlements

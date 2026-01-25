@@ -3,38 +3,51 @@ from typing import Dict, List
 
 def calculate_settlements(balances: Dict[str, float]) -> List[dict]:
     """
-    Convert balances into minimal settlement transactions
+    Given balances like:
+    {
+        "You": 30,
+        "Alex": -30
+    }
+
+    Returns:
+    [
+        { "from": "Alex", "to": "You", "amount": 30 }
+    ]
     """
+
     creditors = []
     debtors = []
 
-    for person, amount in balances.items():
-        if amount > 0:
-            creditors.append([person, amount])
-        elif amount < 0:
-            debtors.append([person, -amount])
+    # Split into creditors and debtors
+    for person, balance in balances.items():
+        if balance > 0:
+            creditors.append([person, balance])
+        elif balance < 0:
+            debtors.append([person, -balance])  # store positive debt
 
     settlements = []
-    i = j = 0
 
-    while i < len(debtors) and j < len(creditors):
-        debtor, debt = debtors[i]
-        creditor, credit = creditors[j]
+    i = 0  # creditor index
+    j = 0  # debtor index
 
-        paid = min(debt, credit)
+    while i < len(creditors) and j < len(debtors):
+        creditor, credit_amount = creditors[i]
+        debtor, debt_amount = debtors[j]
+
+        settled_amount = min(credit_amount, debt_amount)
 
         settlements.append({
             "from": debtor,
             "to": creditor,
-            "amount": round(paid, 2)
+            "amount": round(settled_amount, 2)
         })
 
-        debtors[i][1] -= paid
-        creditors[j][1] -= paid
+        creditors[i][1] -= settled_amount
+        debtors[j][1] -= settled_amount
 
-        if debtors[i][1] == 0:
+        if creditors[i][1] == 0:
             i += 1
-        if creditors[j][1] == 0:
+        if debtors[j][1] == 0:
             j += 1
 
     return settlements

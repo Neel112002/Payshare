@@ -2,9 +2,8 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 import uuid
 
-from .models import Group, Expense, ExpenseSplit
-from .schemas import GroupCreate, ExpenseCreate
-from app.models import Settlement
+from app.models import Group, Expense, ExpenseSplit, Settlement
+from app.schemas import GroupCreate, ExpenseCreate
 
 
 # --------------------
@@ -12,9 +11,7 @@ from app.models import Settlement
 # --------------------
 
 def create_group(db: Session, group: GroupCreate):
-    db_group = Group(
-        name=group.name
-    )
+    db_group = Group(name=group.name)
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
@@ -42,22 +39,23 @@ def create_expense(db: Session, expense: ExpenseCreate):
     )
 
     db.add(db_expense)
-    db.flush()  # get expense ID before commit
+    db.flush()  # ensures db_expense.id is available
 
     for split in expense.splits:
-        db_split = ExpenseSplit(
-            expense_id=db_expense.id,
-            name=split.name,
-            amount=split.amount
+        db.add(
+            ExpenseSplit(
+                expense_id=db_expense.id,
+                name=split.name,
+                amount=split.amount
+            )
         )
-        db.add(db_split)
 
     db.commit()
     db.refresh(db_expense)
     return db_expense
 
 
-def get_expenses_for_group(db: Session, group_id: UUID):
+def get_expenses_by_group(db: Session, group_id: UUID):
     return (
         db.query(Expense)
         .filter(Expense.group_id == group_id)
@@ -65,11 +63,18 @@ def get_expenses_for_group(db: Session, group_id: UUID):
         .all()
     )
 
-def save_settlements(db, group_id, settlements):
+
+# --------------------
+# SETTLEMENTS
+# --------------------
+
+def save_settlements(db: Session, group_id: UUID, settlements: list):
+    # Remove old settlements
     db.query(Settlement).filter(
         Settlement.group_id == group_id
     ).delete()
 
+    # Insert new settlements
     for s in settlements:
         db.add(
             Settlement(
