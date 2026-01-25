@@ -36,3 +36,22 @@ class GroupOut(BaseModel):
 
     class Config:
         from_attributes = True  # pydantic v2
+
+class ExpenseSplitOut(BaseModel):
+    name: str
+    amount: float
+
+    class Config:
+        from_attributes = True
+
+
+class ExpenseOut(BaseModel):
+    id: UUID
+    title: str
+    total_amount: float
+    paid_by: str
+    created_at: datetime
+    splits: List[ExpenseSplitOut]
+
+    class Config:
+        from_attributes = True

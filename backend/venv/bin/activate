@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/neelshah/Documents/GitHub/PayShare-Backend/venv"
+VIRTUAL_ENV="/Users/neelshah/Documents/GitHub/PayShare/backend/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

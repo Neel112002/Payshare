@@ -24,3 +24,6 @@ fastlane/test_output
 timeline.xctimeline
 playground.xcworkspace
 
+venv
+
+
