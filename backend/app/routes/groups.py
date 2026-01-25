@@ -2,11 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+from app.models import Settlement
+from app.models import Settlement
 
 from app.database import get_db
 from app import schemas, crud
 from app.models import Expense
 from app.fairness.balances import calculate_balances, fairness_score
+from app.fairness.settlements import calculate_settlements
 
 router = APIRouter(
     prefix="/groups",
@@ -86,3 +89,50 @@ def get_group_fairness(
         "score": score,
         "balances": balances
     }
+
+def save_settlements(db, group_id, settlements):
+    db.query(Settlement).filter(
+        Settlement.group_id == group_id
+    ).delete()
+
+    for s in settlements:
+        db.add(
+            Settlement(
+                id=uuid.uuid4(),
+                group_id=group_id,
+                from_user=s["from"],
+                to_user=s["to"],
+                amount=s["amount"]
+            )
+        )
+
+    db.commit()
+
+@router.get("/{group_id}/settlements")
+def get_group_settlements(
+    group_id: UUID,
+    db: Session = Depends(get_db)
+):
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.group_id == group_id)
+        .all()
+    )
+
+    expense_data = []
+    for e in expenses:
+        expense_data.append({
+            "paid_by": e.paid_by,
+            "total_amount": e.total_amount,
+            "splits": [
+                {"name": s.name, "amount": s.amount}
+                for s in e.splits
+            ]
+        })
+
+    balances = calculate_balances(expense_data)
+    settlements = calculate_settlements(balances)
+
+    crud.save_settlements(db, group_id, settlements)
+
+    return settlements

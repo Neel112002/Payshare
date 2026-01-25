@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
+import uuid
 
 from .models import Group, Expense, ExpenseSplit
 from .schemas import GroupCreate, ExpenseCreate
+from app.models import Settlement
 
 
 # --------------------
@@ -62,3 +64,21 @@ def get_expenses_for_group(db: Session, group_id: UUID):
         .order_by(Expense.created_at.desc())
         .all()
     )
+
+def save_settlements(db, group_id, settlements):
+    db.query(Settlement).filter(
+        Settlement.group_id == group_id
+    ).delete()
+
+    for s in settlements:
+        db.add(
+            Settlement(
+                id=uuid.uuid4(),
+                group_id=group_id,
+                from_user=s["from"],
+                to_user=s["to"],
+                amount=s["amount"]
+            )
+        )
+
+    db.commit()
