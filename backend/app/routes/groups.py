@@ -6,7 +6,7 @@ from uuid import UUID
 from app.database import get_db
 from app import schemas, crud
 from app.models import Expense
-from app.fairness import calculate_balances, fairness_score
+from app.fairness.balances import calculate_balances, fairness_score
 
 router = APIRouter(
     prefix="/groups",
