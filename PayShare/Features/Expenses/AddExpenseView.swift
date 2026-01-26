@@ -1,17 +1,15 @@
 import SwiftUI
 
 struct AddExpenseView: View {
+    let groupId: UUID
     let groupName: String
 
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var expenseStore: ExpenseStore
 
     @State private var title: String = ""
     @State private var amountText: String = ""
     @State private var paidBy: String = "You"
-
-    @State private var showSplitEditor = false
-    @State private var splitResult: SplitResult?
+    @State private var isSaving = false
 
     var body: some View {
         NavigationStack {
@@ -33,67 +31,44 @@ struct AddExpenseView: View {
                         Text("Sam").tag("Sam")
                     }
                 }
-
-                Section {
-                    Button {
-                        showSplitEditor = true
-                    } label: {
-                        HStack {
-                            Text("Split")
-                            Spacer()
-                            Text(splitSummary)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
             }
             .navigationTitle("Add Expense")
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        saveExpense()
+                        Task { await saveExpense() }
                     }
-                    .disabled(title.isEmpty || amountText.isEmpty)
-                }
-            }
-            .sheet(isPresented: $showSplitEditor) {
-                SplitEditorView(
-                    totalAmount: Double(amountText) ?? 0
-                ) { result in
-                    splitResult = result
+                    .disabled(title.isEmpty || amountText.isEmpty || isSaving)
                 }
             }
         }
     }
 
-    // MARK: - Save
+    // MARK: - Save Expense (BACKEND)
 
-    private func saveExpense() {
-        let total = Double(amountText) ?? 0
+    @MainActor
+    private func saveExpense() async {
+        guard let total = Double(amountText) else { return }
 
-        let splits = splitResult?.splits ?? [
-            ParticipantSplit(
-                name: "Everyone",
-                amount: total
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try await APIClient.shared.createExpense(
+                groupId: groupId,
+                title: title,
+                totalAmount: total,
+                paidBy: paidBy
             )
-        ]
-
-        let expense = Expense(
-            id: UUID(),
-            groupName: groupName,
-            title: title,
-            totalAmount: total,
-            paidBy: paidBy,
-            splits: splits,
-            createdAt: Date()
-        )
-
-        expenseStore.add(expense)
-        dismiss()
-    }
-
-    private var splitSummary: String {
-        guard let splitResult else { return "Equal" }
-        return "\(splitResult.splits.count) people"
+            dismiss()
+        } catch {
+            print("Failed to save expense:", error)
+        }
     }
 }

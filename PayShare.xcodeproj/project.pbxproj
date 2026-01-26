@@ -48,10 +48,16 @@
 				Groups/GroupListView.swift,
 				Models/Expense.swift,
 				Models/FairnessBalance.swift,
+				Models/FairnessResponse.swift,
+				Models/Group.swift,
+				Models/ParticipantSplit.swift,
 				Models/SplitResult.swift,
+				Networking/APIClient.swift,
+				"Networking/JSONDecoder+ISO.swift",
 				PayShareApp.swift,
 				Storage/ExpenseStore.swift,
 				Storage/FairnessCalculator.swift,
+				"View+Card.swift",
 			);
 			target = 0F37568A2EEF405F00145411 /* PayShare */;
 		};
@@ -62,6 +68,7 @@
 				ContentView.swift,
 				Features/Expenses/AddExpenseView.swift,
 				Features/Expenses/SplitEditorView.swift,
+				"View+Card.swift",
 			);
 			target = 0F3756972EEF406000145411 /* PayShareTests */;
 		};

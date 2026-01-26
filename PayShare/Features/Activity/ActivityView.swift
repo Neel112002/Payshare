@@ -36,7 +36,8 @@ struct ActivityView: View {
             }
 
             HStack {
-                Text(expense.groupName)
+                // TEMP: show groupId (later we map this to group name)
+                Text("Group ID: \(expense.groupId.uuidString.prefix(6))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 

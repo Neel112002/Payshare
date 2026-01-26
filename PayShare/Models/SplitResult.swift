@@ -1,12 +1,8 @@
 import Foundation
 
-struct SplitResult {
-    let total: Double
-    let splits: [ParticipantSplit]
-}
-
-struct ParticipantSplit: Identifiable {
+struct SplitResult: Identifiable, Decodable {
     let id = UUID()
-    let name: String
+    let from: String
+    let to: String
     let amount: Double
 }

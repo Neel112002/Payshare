@@ -1,11 +1,11 @@
 import Foundation
 
-struct Expense: Identifiable {
+struct Expense: Identifiable, Decodable {
     let id: UUID
-    let groupName: String
+    let groupId: UUID
     let title: String
     let totalAmount: Double
     let paidBy: String
-    let splits: [ParticipantSplit]
     let createdAt: Date
+    let splits: [ParticipantSplit]
 }
