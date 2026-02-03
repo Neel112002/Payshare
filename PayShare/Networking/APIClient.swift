@@ -32,6 +32,21 @@ final class APIClient {
         return json?["access_token"] as? String ?? ""
     }
 
+    // MARK: - Fetch Groups ✅ NEW
+
+    func fetchGroups() async throws -> [Group] {
+        let url = baseURL.appending(path: "/groups")
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let decoder = JSONDecoder()
+        return try decoder.decode([Group].self, from: data)
+    }
+
     // MARK: - Fetch Group Expenses
 
     func fetchGroupExpenses(groupId: UUID) async throws -> [Expense] {

@@ -19,8 +19,9 @@ app = FastAPI(
 # -------------------------------------------------
 # Routers
 # -------------------------------------------------
-app.include_router(groups.router, prefix="/groups", tags=["Groups"])
-app.include_router(expenses.router, prefix="/expenses", tags=["Expenses"])
+# ❗ FIX: do NOT add prefix here because it's already in groups.py
+app.include_router(groups.router)
+app.include_router(expenses.router)
 
 # -------------------------------------------------
 # Health Check
