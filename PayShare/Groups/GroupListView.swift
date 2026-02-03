@@ -19,7 +19,6 @@ struct GroupListView: View {
                     } else {
                         ForEach(groups) { group in
                             NavigationLink {
-                                // ✅ FIXED: pass BOTH groupId + groupName
                                 GroupDetailView(
                                     groupId: group.id,
                                     groupName: group.name
@@ -39,24 +38,78 @@ struct GroupListView: View {
         }
     }
 
-    // MARK: - Group Card
+    // MARK: - Group Card (REDESIGNED)
 
     private func groupCard(_ group: Group) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(group.name)
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 12) {
 
-            Text("Fairness score: \(group.fairnessScore)")
+            HStack {
+                Text(group.name)
+                    .font(.headline)
+
+                Spacer()
+
+                fairnessBadge(group.fairnessScore)
+            }
+
+            Text(balanceText(group.balance))
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(balanceColor(group.balance))
         }
-        .card()
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    // MARK: - Helpers
+
+    private func fairnessBadge(_ score: Int) -> some View {
+        Text("\(score)%")
+            .font(.caption.bold())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(fairnessColor(score).opacity(0.15))
+            .foregroundStyle(fairnessColor(score))
+            .clipShape(Capsule())
+    }
+
+    private func fairnessColor(_ score: Int) -> Color {
+        switch score {
+        case 80...100: return .green
+        case 60..<80: return .orange
+        default: return .red
+        }
+    }
+
+    private func balanceText(_ balance: Double) -> String {
+        if balance == 0 {
+            return "All settled 🎉"
+        } else if balance < 0 {
+            return "You owe ₹\(Int(abs(balance)))"
+        } else {
+            return "You are owed ₹\(Int(balance))"
+        }
+    }
+
+    private func balanceColor(_ balance: Double) -> Color {
+        balance < 0 ? .red : .green
     }
 
     // MARK: - Empty State
 
     private var emptyState: some View {
-        Text("No groups yet")
-            .foregroundStyle(.secondary)
+        VStack(spacing: 12) {
+            Image(systemName: "person.3")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+
+            Text("No groups yet")
+                .font(.headline)
+
+            Text("Create a group to start sharing expenses.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.top, 80)
     }
 }
