@@ -2,20 +2,26 @@ import SwiftUI
 
 struct GroupListView: View {
 
-    // MARK: - TEMP MOCK DATA (until backend list endpoint)
-    private let groups: [Group] = [
-        Group(id: UUID(), name: "Goa Trip", balance: -420, fairnessScore: 72),
-        Group(id: UUID(), name: "Flatmates", balance: 860, fairnessScore: 88),
-        Group(id: UUID(), name: "Office Lunch", balance: 0, fairnessScore: 95)
-    ]
+    // MARK: - State
+    @State private var groups: [Group] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 14) {
 
-                    if groups.isEmpty {
+                    if isLoading {
+                        ProgressView("Loading groups...")
+                            .padding(.top, 80)
+
+                    } else if let errorMessage {
+                        errorState(errorMessage)
+
+                    } else if groups.isEmpty {
                         emptyState
+
                     } else {
                         ForEach(groups) { group in
                             NavigationLink {
@@ -35,10 +41,27 @@ struct GroupListView: View {
                 .padding(.bottom, 100)
             }
             .navigationTitle("Groups")
+            .task {
+                await loadGroups()
+            }
         }
     }
 
-    // MARK: - Group Card (REDESIGNED)
+    // MARK: - API
+
+    @MainActor
+    private func loadGroups() async {
+        do {
+            groups = try await APIClient.shared.fetchGroups()
+            isLoading = false
+        } catch {
+            errorMessage = "Failed to load groups"
+            isLoading = false
+            print("❌ Group fetch error:", error)
+        }
+    }
+
+    // MARK: - Group Card (UNCHANGED UI)
 
     private func groupCard(_ group: Group) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -61,7 +84,7 @@ struct GroupListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
-    // MARK: - Helpers
+    // MARK: - Helpers (UNCHANGED)
 
     private func fairnessBadge(_ score: Int) -> some View {
         Text("\(score)%")
@@ -95,7 +118,19 @@ struct GroupListView: View {
         balance < 0 ? .red : .green
     }
 
-    // MARK: - Empty State
+    // MARK: - States
+
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 36))
+                .foregroundStyle(.secondary)
+
+            Text(message)
+                .font(.headline)
+        }
+        .padding(.top, 80)
+    }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
@@ -113,3 +148,4 @@ struct GroupListView: View {
         .padding(.top, 80)
     }
 }
+

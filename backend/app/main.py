@@ -4,8 +4,10 @@ from .database import Base, engine
 from .routes import groups, expenses
 
 # -------------------------------------------------
-# Create DB tables (DEV ONLY – later move to Alembic)
+# DEV ONLY: Reset DB on startup
+# ⚠️ This deletes ALL data every restart
 # -------------------------------------------------
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 # -------------------------------------------------
@@ -19,7 +21,6 @@ app = FastAPI(
 # -------------------------------------------------
 # Routers
 # -------------------------------------------------
-# ❗ FIX: do NOT add prefix here because it's already in groups.py
 app.include_router(groups.router)
 app.include_router(expenses.router)
 

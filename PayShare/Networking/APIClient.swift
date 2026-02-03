@@ -4,7 +4,7 @@ final class APIClient {
     static let shared = APIClient()
     private init() {}
 
-    private let baseURL = URL(string: "http://127.0.0.1:8000")!
+    private let baseURL = URL(string: "http://localhost:8000")!
 
     // MARK: - Login
 
