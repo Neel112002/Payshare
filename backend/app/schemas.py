@@ -55,3 +55,9 @@ class ExpenseOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class GroupListResponse(BaseModel):
+    id: UUID
+    name: str
+    balance: float
+    fairness_score: int

@@ -26,6 +26,50 @@ def get_group_by_id(db: Session, group_id: UUID):
     return db.query(Group).filter(Group.id == group_id).first()
 
 
+def get_group_expenses_with_splits(db: Session, group_id: UUID):
+    """
+    Returns expenses in the exact shape required by
+    calculate_balances():
+    [
+        {
+            "paid_by": str,
+            "total_amount": float,
+            "splits": [
+                { "name": str, "amount": float }
+            ]
+        }
+    ]
+    """
+    expenses = (
+        db.query(Expense)
+        .filter(Expense.group_id == group_id)
+        .all()
+    )
+
+    result = []
+
+    for expense in expenses:
+        splits = (
+            db.query(ExpenseSplit)
+            .filter(ExpenseSplit.expense_id == expense.id)
+            .all()
+        )
+
+        result.append({
+            "paid_by": expense.paid_by,
+            "total_amount": expense.total_amount,
+            "splits": [
+                {
+                    "name": split.name,
+                    "amount": split.amount
+                }
+                for split in splits
+            ]
+        })
+
+    return result
+
+
 # --------------------
 # EXPENSES
 # --------------------

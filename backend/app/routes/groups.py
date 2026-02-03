@@ -26,11 +26,35 @@ def create_group(
 
 
 # -------------------------------------------------
-# List Groups
+# List Groups (UPDATED)
 # -------------------------------------------------
-@router.get("/", response_model=List[schemas.GroupOut])
+@router.get("/", response_model=List[schemas.GroupListResponse])
 def list_groups(db: Session = Depends(get_db)):
-    return crud.get_groups(db)
+    groups = crud.get_groups(db)
+
+    response = []
+
+    for group in groups:
+        # Get expenses formatted for fairness logic
+        expenses = crud.get_group_expenses_with_splits(db, group.id)
+
+        # Calculate fairness
+        balances = calculate_balances(expenses)
+        score = fairness_score(balances)
+
+        # TEMP (no auth yet): net group balance
+        net_balance = round(sum(balances.values()), 2)
+
+        response.append(
+            schemas.GroupListResponse(
+                id=group.id,
+                name=group.name,
+                balance=net_balance,
+                fairness_score=score
+            )
+        )
+
+    return response
 
 
 # -------------------------------------------------
@@ -45,7 +69,7 @@ def get_group_expenses(
 
 
 # -------------------------------------------------
-# Fairness / Group Health
+# Fairness / Group Health (UNCHANGED)
 # -------------------------------------------------
 @router.get("/{group_id}/fairness")
 def get_group_fairness(
@@ -86,7 +110,7 @@ def get_group_fairness(
 
 
 # -------------------------------------------------
-# Settlements / Settle Up
+# Settlements / Settle Up (UNCHANGED)
 # -------------------------------------------------
 @router.get("/{group_id}/settlements")
 def get_group_settlements(
