@@ -14,14 +14,19 @@ struct GroupDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 20) {
+
                 headerCard
+
                 fairnessCard
+
                 settlementCard
+
                 expensesCard
             }
             .padding()
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle(groupName)
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -32,10 +37,10 @@ struct GroupDetailView: View {
                 showAddExpense = true
             } label: {
                 Image(systemName: "plus")
+                    .fontWeight(.semibold)
             }
         }
         .sheet(isPresented: $showAddExpense) {
-            // ✅ FIX: pass BOTH groupId and groupName
             AddExpenseView(
                 groupId: groupId,
                 groupName: groupName
@@ -43,7 +48,7 @@ struct GroupDetailView: View {
         }
     }
 
-    // MARK: - API
+    // MARK: - API (UNCHANGED)
 
     @MainActor
     private func loadGroupData() async {
@@ -67,23 +72,27 @@ struct GroupDetailView: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - Header Card (UI IMPROVED)
 
     private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Total spent")
+        VStack(spacing: 10) {
+            Text("Total Spent")
+                .font(.caption)
                 .foregroundStyle(.secondary)
 
             Text("₹\(Int(expenses.reduce(0) { $0 + $1.totalAmount }))")
                 .font(.largeTitle.bold())
 
             Text("\(expenses.count) expenses")
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
         .card()
     }
 
-    // MARK: - Fairness
+    // MARK: - Fairness (UNCHANGED LOGIC, CLEANER PLACEMENT)
 
     private var fairnessCard: some View {
         GroupHealthCard(
@@ -94,45 +103,75 @@ struct GroupDetailView: View {
         )
     }
 
-    // MARK: - Settlement
+    // MARK: - Settlements (UI POLISH)
 
     private var settlementCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Settlements")
                 .font(.headline)
 
             if settlements.isEmpty {
-                Text("All settled 🎉")
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+
+                    Text("All settled")
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 ForEach(settlements) { s in
-                    Text("\(s.from) → \(s.to): ₹\(Int(s.amount))")
+                    HStack {
+                        Text("\(s.from) → \(s.to)")
+                        Spacer()
+                        Text("₹\(Int(s.amount))")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.subheadline)
                 }
             }
         }
         .card()
     }
 
-    // MARK: - Expenses
+    // MARK: - Expenses (BIGGEST UX IMPROVEMENT)
 
     private var expensesCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Expenses")
                 .font(.headline)
 
             if expenses.isEmpty {
-                Text("No expenses yet")
-                    .foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    Image(systemName: "receipt")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.secondary)
+
+                    Text("No expenses yet")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
             } else {
                 ForEach(expenses) { expense in
-                    VStack(alignment: .leading) {
-                        Text(expense.title)
-                            .font(.headline)
+                    VStack(spacing: 8) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(expense.title)
+                                    .font(.headline)
 
-                        Text("Paid by \(expense.paidBy)")
-                            .foregroundStyle(.secondary)
+                                Text("Paid by \(expense.paidBy)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Text("₹\(Int(expense.totalAmount))")
+                                .fontWeight(.semibold)
+                        }
+
+                        Divider()
                     }
-                    Divider()
                 }
             }
         }
