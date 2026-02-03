@@ -46,6 +46,33 @@ final class APIClient {
         let decoder = JSONDecoder()
         return try decoder.decode([Group].self, from: data)
     }
+    
+    // MARK: - Create Group
+
+    // MARK: - Create Group
+
+    func createGroup(name: String) async throws {
+        let url = baseURL.appending(path: "/groups")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = [
+            "name": name
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
+
 
     // MARK: - Fetch Group Expenses
 

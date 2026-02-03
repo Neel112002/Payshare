@@ -4,10 +4,8 @@ from .database import Base, engine
 from .routes import groups, expenses
 
 # -------------------------------------------------
-# DEV ONLY: Reset DB on startup
-# ⚠️ This deletes ALL data every restart
+# Create DB tables (DEV ONLY – later move to Alembic)
 # -------------------------------------------------
-Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 # -------------------------------------------------

@@ -6,6 +6,7 @@ struct GroupListView: View {
     @State private var groups: [Group] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showAddGroup = false
 
     var body: some View {
         NavigationStack {
@@ -41,8 +42,24 @@ struct GroupListView: View {
                 .padding(.bottom, 100)
             }
             .navigationTitle("Groups")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showAddGroup = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
             .task {
                 await loadGroups()
+            }
+            .sheet(isPresented: $showAddGroup, onDismiss: {
+                Task {
+                    await loadGroups()
+                }
+            }) {
+                AddGroupView()
             }
         }
     }
@@ -52,13 +69,14 @@ struct GroupListView: View {
     @MainActor
     private func loadGroups() async {
         do {
+            isLoading = true
             groups = try await APIClient.shared.fetchGroups()
-            isLoading = false
+            errorMessage = nil
         } catch {
             errorMessage = "Failed to load groups"
-            isLoading = false
             print("❌ Group fetch error:", error)
         }
+        isLoading = false
     }
 
     // MARK: - Group Card (UNCHANGED UI)
@@ -84,7 +102,7 @@ struct GroupListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
-    // MARK: - Helpers (UNCHANGED)
+    // MARK: - Helpers
 
     private func fairnessBadge(_ score: Int) -> some View {
         Text("\(score)%")
@@ -148,4 +166,3 @@ struct GroupListView: View {
         .padding(.top, 80)
     }
 }
-
