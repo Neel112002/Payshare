@@ -1,7 +1,6 @@
 import Foundation
 
-struct ParticipantSplit: Identifiable, Decodable {
-    let id = UUID()
+struct ParticipantSplit: Decodable {
     let name: String
     let amount: Double
 }

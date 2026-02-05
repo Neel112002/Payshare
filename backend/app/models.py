@@ -2,6 +2,8 @@ import uuid
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
 from .database import Base
 
 
@@ -23,6 +25,13 @@ class Expense(Base):
     paid_by = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
+    # ✅ ADD THIS
+    splits = relationship(
+        "ExpenseSplit",
+        back_populates="expense",
+        cascade="all, delete-orphan"
+    )
+
 
 class ExpenseSplit(Base):
     __tablename__ = "expense_splits"
@@ -31,6 +40,9 @@ class ExpenseSplit(Base):
     expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id"))
     name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
+
+    # ✅ ADD THIS
+    expense = relationship("Expense", back_populates="splits")
 
 
 class Settlement(Base):

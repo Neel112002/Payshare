@@ -24,6 +24,7 @@ struct ActivityView: View {
 
     private func activityRow(_ expense: Expense) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+
             HStack {
                 Text(expense.title)
                     .font(.headline)
@@ -36,21 +37,16 @@ struct ActivityView: View {
             }
 
             HStack {
-                // TEMP: show groupId (later we map this to group name)
-                Text("Group ID: \(expense.groupId.uuidString.prefix(6))")
-                    .font(.subheadline)
+                Text("Paid by \(expense.paidBy)")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
 
                 Spacer()
 
-                Text("Paid by \(expense.paidBy)")
-                    .font(.footnote)
+                Text(expense.createdAt, style: .relative)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            Text(expense.createdAt, style: .relative)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 6)
     }
