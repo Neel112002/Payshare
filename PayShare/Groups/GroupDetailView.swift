@@ -17,11 +17,8 @@ struct GroupDetailView: View {
             VStack(spacing: 20) {
 
                 headerCard
-
                 fairnessCard
-
                 settlementCard
-
                 expensesCard
             }
             .padding()
@@ -29,9 +26,13 @@ struct GroupDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(groupName)
         .navigationBarTitleDisplayMode(.inline)
+
+        // Initial load
         .task {
             await loadGroupData()
         }
+
+        // Add expense button
         .toolbar {
             Button {
                 showAddExpense = true
@@ -40,7 +41,13 @@ struct GroupDetailView: View {
                     .fontWeight(.semibold)
             }
         }
-        .sheet(isPresented: $showAddExpense) {
+
+        // ✅ CRITICAL FIX: reload after sheet closes
+        .sheet(isPresented: $showAddExpense, onDismiss: {
+            Task {
+                await loadGroupData()
+            }
+        }) {
             AddExpenseView(
                 groupId: groupId,
                 groupName: groupName
@@ -48,31 +55,28 @@ struct GroupDetailView: View {
         }
     }
 
-    // MARK: - API (UNCHANGED)
+    // MARK: - API
 
     @MainActor
     private func loadGroupData() async {
+        isLoading = true
         do {
             expenses = try await APIClient.shared.fetchGroupExpenses(groupId: groupId)
 
             let fairness = try await APIClient.shared.fetchGroupFairness(groupId: groupId)
-
             fairnessBalances = fairness.balances.map {
                 FairnessBalance(name: $0.key, balance: $0.value)
             }
-
             fairnessScore = fairness.score
 
             settlements = try await APIClient.shared.fetchGroupSettlements(groupId: groupId)
-
-            isLoading = false
         } catch {
-            print("Failed to load group:", error)
-            isLoading = false
+            print("❌ Failed to load group:", error)
         }
+        isLoading = false
     }
 
-    // MARK: - Header Card (UI IMPROVED)
+    // MARK: - Header Card
 
     private var headerCard: some View {
         VStack(spacing: 10) {
@@ -92,7 +96,7 @@ struct GroupDetailView: View {
         .card()
     }
 
-    // MARK: - Fairness (UNCHANGED LOGIC, CLEANER PLACEMENT)
+    // MARK: - Fairness
 
     private var fairnessCard: some View {
         GroupHealthCard(
@@ -103,7 +107,7 @@ struct GroupDetailView: View {
         )
     }
 
-    // MARK: - Settlements (UI POLISH)
+    // MARK: - Settlements
 
     private var settlementCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -133,7 +137,7 @@ struct GroupDetailView: View {
         .card()
     }
 
-    // MARK: - Expenses (BIGGEST UX IMPROVEMENT)
+    // MARK: - Expenses
 
     private var expensesCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -169,7 +173,6 @@ struct GroupDetailView: View {
                             Text("₹\(Int(expense.totalAmount))")
                                 .fontWeight(.semibold)
                         }
-
                         Divider()
                     }
                 }
