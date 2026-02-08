@@ -2,8 +2,10 @@ import SwiftUI
 
 struct RootView: View {
 
-    // ✅ Create the store ONCE at root level
+    // ✅ Global stores created ONCE
     @StateObject private var activityStore = ActivityStore()
+    @StateObject private var profileStore = ProfileStore()
+    @StateObject private var expenseStore = ExpenseStore()
 
     var body: some View {
         TabView {
@@ -32,7 +34,9 @@ struct RootView: View {
                 Label("Profile", systemImage: "person.fill")
             }
         }
-        // ✅ Inject into entire tab hierarchy
+        // ✅ Inject stores into entire app hierarchy
         .environmentObject(activityStore)
+        .environmentObject(profileStore)
+        .environmentObject(expenseStore)
     }
 }
