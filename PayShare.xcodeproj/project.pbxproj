@@ -63,7 +63,6 @@
 				Storage/AuthStore.swift,
 				Storage/ExpenseStore.swift,
 				Storage/FairnessCalculator.swift,
-				Storage/ProfileStor.swift,
 				Storage/ProfileStore.swift,
 				"View+Card.swift",
 			);

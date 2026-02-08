@@ -2,9 +2,8 @@ import SwiftUI
 
 struct RootView: View {
 
-    @StateObject private var authStore = AuthStore()
-    @StateObject private var profileStore = ProfileStore()
     @StateObject private var activityStore = ActivityStore()
+    @StateObject private var profileStore = ProfileStore()
 
     var body: some View {
         TabView {
@@ -30,8 +29,7 @@ struct RootView: View {
                 Label("Profile", systemImage: "person.fill")
             }
         }
-        .environmentObject(authStore)
-        .environmentObject(profileStore)
         .environmentObject(activityStore)
+        .environmentObject(profileStore)
     }
 }
