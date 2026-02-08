@@ -2,21 +2,26 @@ import SwiftUI
 
 struct ActivityView: View {
 
-    @EnvironmentObject private var expenseStore: ExpenseStore
+    @EnvironmentObject private var activityStore: ActivityStore
 
     var body: some View {
         NavigationStack {
             List {
-                if expenseStore.expenses.isEmpty {
+                if activityStore.isLoading {
+                    loadingState
+                } else if activityStore.activities.isEmpty {
                     emptyState
                 } else {
-                    ForEach(expenseStore.expenses) { expense in
+                    ForEach(activityStore.activities) { expense in
                         activityRow(expense)
                     }
                 }
             }
             .listStyle(.plain)
             .navigationTitle("Activity")
+            .task {
+                await activityStore.loadActivity()
+            }
         }
     }
 
@@ -33,7 +38,6 @@ struct ActivityView: View {
 
                 Text("₹\(Int(expense.totalAmount))")
                     .font(.headline)
-                    .foregroundStyle(.primary)
             }
 
             HStack {
@@ -51,7 +55,16 @@ struct ActivityView: View {
         .padding(.vertical, 6)
     }
 
-    // MARK: - Empty State
+    // MARK: - States
+
+    private var loadingState: some View {
+        HStack {
+            Spacer()
+            ProgressView()
+            Spacer()
+        }
+        .listRowSeparator(.hidden)
+    }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
