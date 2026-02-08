@@ -6,6 +6,10 @@ final class APIClient {
 
     private let baseURL = URL(string: "http://localhost:8000")!
 
+    // MARK: - AUTH TOKEN (TEMP)
+    // Later we move this to Keychain
+    var authToken: String?
+
     // MARK: - Login
 
     func login(email: String, password: String) async throws -> String {
@@ -29,10 +33,41 @@ final class APIClient {
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["access_token"] as? String ?? ""
+        let token = json?["access_token"] as? String ?? ""
+
+        // ✅ Store token in memory
+        self.authToken = token
+
+        return token
     }
 
-    // MARK: - Fetch Groups ✅ NEW
+    // MARK: - Fetch Current User (PROFILE)
+
+    func fetchMe() async throws -> User {
+        let url = baseURL.appending(path: "/auth/me")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        guard let token = authToken else {
+            throw URLError(.userAuthenticationRequired)
+        }
+
+        request.setValue(
+            "Bearer \(token)",
+            forHTTPHeaderField: "Authorization"
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try JSONDecoder().decode(User.self, from: data)
+    }
+
+    // MARK: - Fetch Groups
 
     func fetchGroups() async throws -> [Group] {
         let url = baseURL.appending(path: "/groups")
@@ -43,11 +78,8 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        return try decoder.decode([Group].self, from: data)
+        return try JSONDecoder().decode([Group].self, from: data)
     }
-    
-    // MARK: - Create Group
 
     // MARK: - Create Group
 
@@ -58,10 +90,7 @@ final class APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = [
-            "name": name
-        ]
-
+        let body = ["name": name]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (_, response) = try await URLSession.shared.data(for: request)
@@ -71,6 +100,8 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
     }
+
+    // MARK: - Fetch Group Expenses
 
     func fetchGroupExpenses(groupId: UUID) async throws -> [Expense] {
         let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/expenses")
@@ -88,7 +119,7 @@ final class APIClient {
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
 
-            // 1️⃣ Try ISO8601 with fractional seconds + timezone
+            // ISO8601 with fractional seconds
             let isoFormatter = ISO8601DateFormatter()
             isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
@@ -96,7 +127,7 @@ final class APIClient {
                 return date
             }
 
-            // 2️⃣ Try FastAPI default (NO timezone, microseconds)
+            // FastAPI default (no timezone)
             let fastAPIDateFormatter = DateFormatter()
             fastAPIDateFormatter.locale = Locale(identifier: "en_US_POSIX")
             fastAPIDateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
@@ -106,7 +137,6 @@ final class APIClient {
                 return date
             }
 
-            // ❌ If both fail, crash loudly (correct behavior)
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Unrecognized date format: \(dateString)"
@@ -115,7 +145,6 @@ final class APIClient {
 
         return try decoder.decode([Expense].self, from: data)
     }
-
 
     // MARK: - Fetch Group Fairness
 
@@ -128,8 +157,7 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        return try decoder.decode(FairnessResponse.self, from: data)
+        return try JSONDecoder().decode(FairnessResponse.self, from: data)
     }
 
     // MARK: - Fetch Group Settlements
@@ -143,8 +171,7 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        return try decoder.decode([SplitResult].self, from: data)
+        return try JSONDecoder().decode([SplitResult].self, from: data)
     }
 
     // MARK: - Create Expense

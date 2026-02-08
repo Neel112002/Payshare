@@ -54,14 +54,17 @@
 				Models/Group.swift,
 				Models/ParticipantSplit.swift,
 				Models/SplitResult.swift,
+				Models/User.swift,
 				Models/UserProfile.swift,
 				Networking/APIClient.swift,
 				"Networking/JSONDecoder+ISO.swift",
 				PayShareApp.swift,
 				Storage/ActivityStore.swift,
+				Storage/AuthStore.swift,
 				Storage/ExpenseStore.swift,
 				Storage/FairnessCalculator.swift,
 				Storage/ProfileStor.swift,
+				Storage/ProfileStore.swift,
 				"View+Card.swift",
 			);
 			target = 0F37568A2EEF405F00145411 /* PayShare */;

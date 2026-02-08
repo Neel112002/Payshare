@@ -1,39 +1,56 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @EnvironmentObject var appState: AppState
+
+    @EnvironmentObject private var profileStore: ProfileStore
+    @EnvironmentObject private var authStore: AuthStore
 
     var body: some View {
-        List {
-            Section {
-                HStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 44))
-                        .foregroundStyle(.blue)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Neel").font(.headline)
-                        Text("neel@example.com")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.vertical, 6)
-            }
-
-            Section("Settings") {
-                Label("Currency: INR", systemImage: "indianrupeesign.circle")
-                Label("Notifications", systemImage: "bell")
-            }
-
-            Section {
-                Button(role: .destructive) {
-                    appState.isLoggedIn = false
-                } label: {
-                    Text("Logout")
-                }
+        ScrollView {
+            if profileStore.isLoading {
+                ProgressView()
+                    .padding(.top, 60)
+            } else if let user = profileStore.user {
+                profileContent(user)
+            } else {
+                Text("No profile data")
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 60)
             }
         }
         .navigationTitle("Profile")
+        .task {
+            await profileStore.loadProfile()
+        }
+    }
+
+    private func profileContent(_ user: User) -> some View {
+        VStack(spacing: 24) {
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(user.name)
+                    .font(.title2.bold())
+
+                Text(user.email)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Currency: \(user.currency)")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+
+            Button(role: .destructive) {
+                authStore.logout()
+            } label: {
+                Text("Logout")
+                    .frame(maxWidth: .infinity)
+            }
+            .card()
+        }
+        .padding()
     }
 }

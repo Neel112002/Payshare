@@ -2,15 +2,13 @@ import SwiftUI
 
 struct RootView: View {
 
-    // ✅ Global stores created ONCE
-    @StateObject private var activityStore = ActivityStore()
+    @StateObject private var authStore = AuthStore()
     @StateObject private var profileStore = ProfileStore()
-    @StateObject private var expenseStore = ExpenseStore()
+    @StateObject private var activityStore = ActivityStore()
 
     var body: some View {
         TabView {
 
-            // MARK: - Groups
             NavigationStack {
                 GroupListView()
             }
@@ -18,7 +16,6 @@ struct RootView: View {
                 Label("Groups", systemImage: "person.3.fill")
             }
 
-            // MARK: - Activity
             NavigationStack {
                 ActivityView()
             }
@@ -26,7 +23,6 @@ struct RootView: View {
                 Label("Activity", systemImage: "clock.arrow.circlepath")
             }
 
-            // MARK: - Profile
             NavigationStack {
                 ProfileView()
             }
@@ -34,9 +30,8 @@ struct RootView: View {
                 Label("Profile", systemImage: "person.fill")
             }
         }
-        // ✅ Inject stores into entire app hierarchy
-        .environmentObject(activityStore)
+        .environmentObject(authStore)
         .environmentObject(profileStore)
-        .environmentObject(expenseStore)
+        .environmentObject(activityStore)
     }
 }
