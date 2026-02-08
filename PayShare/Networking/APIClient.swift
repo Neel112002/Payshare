@@ -72,10 +72,6 @@ final class APIClient {
         }
     }
 
-
-
-    // MARK: - Fetch Group Expenses
-
     func fetchGroupExpenses(groupId: UUID) async throws -> [Expense] {
         let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/expenses")
 
@@ -86,10 +82,40 @@ final class APIClient {
         }
 
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+
+        // 🔒 Robust date decoding (ISO8601 + FastAPI microseconds)
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+
+            // 1️⃣ Try ISO8601 with fractional seconds + timezone
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            if let date = isoFormatter.date(from: dateString) {
+                return date
+            }
+
+            // 2️⃣ Try FastAPI default (NO timezone, microseconds)
+            let fastAPIDateFormatter = DateFormatter()
+            fastAPIDateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            fastAPIDateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            fastAPIDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+
+            if let date = fastAPIDateFormatter.date(from: dateString) {
+                return date
+            }
+
+            // ❌ If both fail, crash loudly (correct behavior)
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unrecognized date format: \(dateString)"
+            )
+        }
 
         return try decoder.decode([Expense].self, from: data)
     }
+
 
     // MARK: - Fetch Group Fairness
 
