@@ -6,8 +6,7 @@ final class APIClient {
 
     private let baseURL = URL(string: "http://localhost:8000")!
 
-    // MARK: - AUTH TOKEN (TEMP)
-    // Later we move this to Keychain
+    // MARK: - Auth Token (TEMP – later move to Keychain)
     var authToken: String?
 
     // MARK: - Login
@@ -35,28 +34,22 @@ final class APIClient {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let token = json?["access_token"] as? String ?? ""
 
-        // ✅ Store token in memory
         self.authToken = token
-
         return token
     }
 
-    // MARK: - Fetch Current User (PROFILE)
+    // MARK: - Fetch Current User (/me)
 
     func fetchMe() async throws -> User {
-        let url = baseURL.appending(path: "/auth/me")
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        let url = baseURL.appending(path: "/me")
 
         guard let token = authToken else {
             throw URLError(.userAuthenticationRequired)
         }
 
-        request.setValue(
-            "Bearer \(token)",
-            forHTTPHeaderField: "Authorization"
-        )
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -67,7 +60,7 @@ final class APIClient {
         return try JSONDecoder().decode(User.self, from: data)
     }
 
-    // MARK: - Fetch Groups
+    // MARK: - Groups
 
     func fetchGroups() async throws -> [Group] {
         let url = baseURL.appending(path: "/groups")
@@ -78,10 +71,8 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
 
-        return try JSONDecoder().decode([Group].self, from: data)
+        return try JSONDecoder().decode([Group] .self, from: data)
     }
-
-    // MARK: - Create Group
 
     func createGroup(name: String) async throws {
         let url = baseURL.appending(path: "/groups")
@@ -90,8 +81,9 @@ final class APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = ["name": name]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "name": name
+        ])
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -101,7 +93,7 @@ final class APIClient {
         }
     }
 
-    // MARK: - Fetch Group Expenses
+    // MARK: - Expenses
 
     func fetchGroupExpenses(groupId: UUID) async throws -> [Expense] {
         let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/expenses")
@@ -113,68 +105,32 @@ final class APIClient {
         }
 
         let decoder = JSONDecoder()
-
-        // 🔒 Robust date decoding (ISO8601 + FastAPI microseconds)
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
 
-            // ISO8601 with fractional seconds
-            let isoFormatter = ISO8601DateFormatter()
-            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-            if let date = isoFormatter.date(from: dateString) {
+            let iso = ISO8601DateFormatter()
+            iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = iso.date(from: dateString) {
                 return date
             }
 
-            // FastAPI default (no timezone)
-            let fastAPIDateFormatter = DateFormatter()
-            fastAPIDateFormatter.locale = Locale(identifier: "en_US_POSIX")
-            fastAPIDateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-            fastAPIDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-
-            if let date = fastAPIDateFormatter.date(from: dateString) {
+            let fallback = DateFormatter()
+            fallback.locale = Locale(identifier: "en_US_POSIX")
+            fallback.timeZone = TimeZone(secondsFromGMT: 0)
+            fallback.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+            if let date = fallback.date(from: dateString) {
                 return date
             }
 
             throw DecodingError.dataCorruptedError(
                 in: container,
-                debugDescription: "Unrecognized date format: \(dateString)"
+                debugDescription: "Invalid date: \(dateString)"
             )
         }
 
         return try decoder.decode([Expense].self, from: data)
     }
-
-    // MARK: - Fetch Group Fairness
-
-    func fetchGroupFairness(groupId: UUID) async throws -> FairnessResponse {
-        let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/fairness")
-
-        let (data, response) = try await URLSession.shared.data(from: url)
-
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
-        }
-
-        return try JSONDecoder().decode(FairnessResponse.self, from: data)
-    }
-
-    // MARK: - Fetch Group Settlements
-
-    func fetchGroupSettlements(groupId: UUID) async throws -> [SplitResult] {
-        let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/settlements")
-
-        let (data, response) = try await URLSession.shared.data(from: url)
-
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
-        }
-
-        return try JSONDecoder().decode([SplitResult].self, from: data)
-    }
-
-    // MARK: - Create Expense
 
     func createExpense(
         groupId: UUID,
@@ -189,25 +145,48 @@ final class APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body: [String: Any] = [
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
             "group_id": groupId.uuidString,
             "title": title,
             "total_amount": totalAmount,
             "paid_by": paidBy,
             "splits": [
-                [
-                    "name": paidBy,
-                    "amount": totalAmount
-                ]
+                ["name": paidBy, "amount": totalAmount]
             ]
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        ])
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
+    }
+
+    // MARK: - Fairness
+
+    func fetchGroupFairness(groupId: UUID) async throws -> FairnessResponse {
+        let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/fairness")
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try JSONDecoder().decode(FairnessResponse.self, from: data)
+    }
+
+    // MARK: - Settlements
+
+    func fetchGroupSettlements(groupId: UUID) async throws -> [SplitResult] {
+        let url = baseURL.appending(path: "/groups/\(groupId.uuidString)/settlements")
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try JSONDecoder().decode([SplitResult].self, from: data)
     }
 }
