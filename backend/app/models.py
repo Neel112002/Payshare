@@ -54,3 +54,11 @@ class Settlement(Base):
     to_user = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)

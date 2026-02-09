@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from .database import Base, engine
 from .routes import groups, expenses
+from app.routes import profile
 
 # -------------------------------------------------
 # Create DB tables (DEV ONLY – later move to Alembic)
@@ -21,6 +22,7 @@ app = FastAPI(
 # -------------------------------------------------
 app.include_router(groups.router)
 app.include_router(expenses.router)
+app.include_router(profile.router)
 
 # -------------------------------------------------
 # Health Check

@@ -61,3 +61,11 @@ class GroupListResponse(BaseModel):
     name: str
     balance: float
     fairness_score: int
+
+class UserOut(BaseModel):
+    id: UUID
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True

@@ -1,8 +1,7 @@
 import Foundation
 
-struct User: Identifiable, Decodable {
+struct User: Codable, Identifiable {
     let id: UUID
     let name: String
     let email: String
-    let currency: String
 }
