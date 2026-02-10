@@ -1,81 +1,86 @@
 import SwiftUI
 
 struct LoginView: View {
-    @EnvironmentObject var appState: AppState
+
+    @EnvironmentObject private var appState: AppState
 
     @State private var email = ""
     @State private var password = ""
-    @State private var errorText: String?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+
             Spacer()
 
-            VStack(spacing: 18) {
-                VStack(spacing: 8) {
-                    Text("PayShare")
-                        .font(.system(size: 34, weight: .bold))
-                    Text("Split bills, settle fast.")
-                        .foregroundStyle(.secondary)
-                        .font(.subheadline)
-                }
+            Text("PayShare")
+                .font(.largeTitle.bold())
 
-                VStack(spacing: 12) {
-                    TextField("Email", text: $email)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .padding(14)
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+            Text("Login")
+                .font(.title2)
+                .foregroundStyle(.secondary)
 
-                    SecureField("Password", text: $password)
-                        .padding(14)
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
+            VStack(spacing: 12) {
 
-                if let errorText {
-                    Text(errorText)
-                        .foregroundStyle(.red)
-                        .font(.footnote)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                TextField("Email", text: $email)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.emailAddress)
+                    .textFieldStyle(.roundedBorder)
 
-                Button {
-                    if email.isEmpty || password.isEmpty {
-                        errorText = "Please enter email and password."
-                        return
-                    }
-                    errorText = nil
-                    appState.isLoggedIn = true
-                } label: {
-                    Text("Login")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                }
-                .buttonStyle(.borderedProminent)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-
-                Text("No account yet? We’ll add signup later.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                SecureField("Password", text: $password)
+                    .textFieldStyle(.roundedBorder)
             }
-            .padding(22)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 22))
-            .padding(.horizontal, 20)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .font(.footnote)
+            }
+
+            Button {
+                login()
+            } label: {
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Login")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isLoading || email.isEmpty || password.isEmpty)
 
             Spacer()
         }
-        .background(
-            LinearGradient(
-                colors: [.blue.opacity(0.20), .purple.opacity(0.15), .clear],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-        )
+        .padding()
+    }
+
+    // MARK: - Login Logic
+
+    private func login() {
+        guard !email.isEmpty, !password.isEmpty else { return }
+
+        isLoading = true
+        errorMessage = nil
+
+        Task {
+            do {
+                try await APIClient.shared.login(
+                    email: email,
+                    password: password
+                )
+
+                // ✅ Switch app to logged-in state
+                appState.isLoggedIn = true
+
+            } catch {
+                errorMessage = "Invalid email or password"
+            }
+
+            isLoading = false
+        }
     }
 }

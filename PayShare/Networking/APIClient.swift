@@ -1,13 +1,18 @@
 import Foundation
 
 final class APIClient {
+
     static let shared = APIClient()
-    private init() {}
+
+    private init() {
+        // 🔑 Load token from Keychain on app launch
+        self.authToken = KeychainService.loadToken()
+    }
 
     private let baseURL = URL(string: "http://localhost:8000")!
 
-    // MARK: - Auth Token (TEMP – later move to Keychain)
-    var authToken: String?
+    // MARK: - Auth Token (Persisted)
+    private(set) var authToken: String?
 
     // MARK: - Login
 
@@ -18,12 +23,10 @@ final class APIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = [
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
             "email": email,
             "password": password
-        ]
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        ])
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -34,8 +37,18 @@ final class APIClient {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let token = json?["access_token"] as? String ?? ""
 
+        // ✅ Save token
         self.authToken = token
+        KeychainService.saveToken(token)
+
         return token
+    }
+
+    // MARK: - Logout
+
+    func logout() {
+        authToken = nil
+        KeychainService.deleteToken()
     }
 
     // MARK: - Fetch Current User (/me)
@@ -71,7 +84,7 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
 
-        return try JSONDecoder().decode([Group] .self, from: data)
+        return try JSONDecoder().decode([Group].self, from: data)
     }
 
     func createGroup(name: String) async throws {
@@ -119,6 +132,7 @@ final class APIClient {
             fallback.locale = Locale(identifier: "en_US_POSIX")
             fallback.timeZone = TimeZone(secondsFromGMT: 0)
             fallback.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+
             if let date = fallback.date(from: dateString) {
                 return date
             }

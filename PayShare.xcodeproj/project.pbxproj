@@ -41,12 +41,14 @@
 				Features/Auth/LoginView.swift,
 				Features/Expenses/AddExpenseView.swift,
 				Features/Expenses/SplitEditorView.swift,
+				Features/Profile/ProfileStore.swift,
 				Features/Profile/ProfileView.swift,
 				Groups/AddGroupView.swift,
 				"Groups/FairnessInsightsView .swift",
 				Groups/GroupDetailView.swift,
 				Groups/GroupHealthCard.swift,
 				Groups/GroupListView.swift,
+				Groups/KeychainService.swift,
 				Models/ActivityItem.swift,
 				Models/Expense.swift,
 				Models/FairnessBalance.swift,
@@ -63,7 +65,6 @@
 				Storage/AuthStore.swift,
 				Storage/ExpenseStore.swift,
 				Storage/FairnessCalculator.swift,
-				Storage/ProfileStore.swift,
 				"View+Card.swift",
 			);
 			target = 0F37568A2EEF405F00145411 /* PayShare */;
