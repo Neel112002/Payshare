@@ -9,7 +9,7 @@ final class APIClient {
         self.authToken = KeychainService.loadToken()
     }
 
-    private let baseURL = URL(string: "http://localhost:8000")!
+    private let baseURL = URL(string: "http://127.0.0.1:8000")!
 
     // MARK: - Auth Token (Persisted)
     private(set) var authToken: String?
