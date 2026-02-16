@@ -1,9 +1,14 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
+
 
 from .database import Base, engine
 from .routes import groups, expenses
 from app.routes import profile
 from app.auth import routes as auth
+
+import os
+load_dotenv()
 
 
 Base.metadata.create_all(bind=engine)
