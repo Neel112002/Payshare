@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List
 from uuid import UUID
 from datetime import datetime
-
+from pydantic import EmailStr
 
 # =========================
 # AUTH SCHEMAS
@@ -106,3 +106,29 @@ class ExpenseResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

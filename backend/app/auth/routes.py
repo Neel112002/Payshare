@@ -1,20 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models import User
-from app.schemas import UserCreate, UserLogin, Token
-from app.auth.security import hash_password, verify_password, create_access_token
+from app import models, schemas
+from app.auth.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_reset_token
+)
+from jose import jwt, JWTError
+from app.auth.security import SECRET_KEY, ALGORITHM
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
-@router.post("/register", response_model=Token)
-def register(user: UserCreate, db: Session = Depends(get_db)):
 
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
+# -----------------------
+# Register
+# -----------------------
+
+@router.post("/register", response_model=schemas.UserOut)
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
+
+    if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    new_user = User(
+    new_user = models.User(
         name=user.name,
         email=user.email,
         hashed_password=hash_password(user.password)
@@ -24,19 +38,86 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    token = create_access_token({"sub": new_user.email})
-
-    return {"access_token": token, "token_type": "bearer"}
+    return new_user
 
 
-@router.post("/login", response_model=Token)
-def login(data: UserLogin, db: Session = Depends(get_db)):
+# -----------------------
+# Login
+# -----------------------
 
-    user = db.query(User).filter(User.email == data.email).first()
+@router.post("/login", response_model=schemas.TokenResponse)
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(
+        models.User.email == user.email
+    ).first()
 
-    if not user or not verify_password(data.password, user.hashed_password):
+    if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token({"sub": user.email})
+    token = create_access_token({"sub": str(db_user.id)})
 
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
+
+
+# -----------------------
+# Forgot Password
+# -----------------------
+
+@router.post("/forgot-password")
+def forgot_password(
+    request: schemas.ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(
+        models.User.email == request.email
+    ).first()
+
+    if not user:
+        return {"message": "If email exists, reset link sent."}
+
+    reset_token = create_reset_token(user.email)
+
+    return {
+        "message": "Reset token generated (dev mode)",
+        "reset_token": reset_token
+    }
+
+
+# -----------------------
+# Reset Password
+# -----------------------
+
+@router.post("/reset-password")
+def reset_password(
+    request: schemas.ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(
+            request.token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        email = payload.get("sub")
+
+    except JWTError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired token"
+        )
+
+    user = db.query(models.User).filter(
+        models.User.email == email
+    ).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.hashed_password = hash_password(request.new_password)
+    db.commit()
+
+    return {"message": "Password reset successful"}
