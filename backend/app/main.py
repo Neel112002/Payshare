@@ -23,7 +23,7 @@ app = FastAPI(
 app.include_router(groups.router)
 app.include_router(expenses.router)
 app.include_router(profile.router)
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(auth.router)
 
 # Health Check
 
