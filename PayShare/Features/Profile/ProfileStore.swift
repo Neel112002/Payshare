@@ -8,6 +8,12 @@ final class ProfileStore: ObservableObject {
     @Published var user: User?
     @Published var isLoading = false
 
+    private let appState: AppState
+
+    init(appState: AppState) {
+        self.appState = appState
+    }
+
     // MARK: - Load Profile (/me)
 
     func loadProfile() async {
@@ -28,5 +34,6 @@ final class ProfileStore: ObservableObject {
     func logout() {
         APIClient.shared.logout()
         user = nil
+        appState.isLoggedIn = false
     }
 }

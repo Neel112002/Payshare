@@ -10,7 +10,7 @@ struct LoginView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
 
             Spacer()
 
@@ -18,7 +18,7 @@ struct LoginView: View {
                 .font(.largeTitle.bold())
 
             Text("Login")
-                .font(.title2)
+                .font(.title3)
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 12) {
@@ -39,9 +39,7 @@ struct LoginView: View {
                     .font(.footnote)
             }
 
-            Button {
-                login()
-            } label: {
+            Button(action: login) {
                 if isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity)
@@ -73,14 +71,20 @@ struct LoginView: View {
                     password: password
                 )
 
-                // ✅ Switch app to logged-in state
-                appState.isLoggedIn = true
+                await MainActor.run {
+                    appState.isLoggedIn = true
+                    errorMessage = nil
+                }
 
             } catch {
-                errorMessage = "Invalid email or password"
+                await MainActor.run {
+                    errorMessage = "Invalid email or password"
+                }
             }
 
-            isLoading = false
+            await MainActor.run {
+                isLoading = false
+            }
         }
     }
 }

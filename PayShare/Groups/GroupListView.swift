@@ -2,6 +2,8 @@ import SwiftUI
 
 struct GroupListView: View {
 
+    @EnvironmentObject private var appState: AppState
+
     // MARK: - State
     @State private var groups: [Group] = []
     @State private var isLoading = true
@@ -54,10 +56,11 @@ struct GroupListView: View {
             .task {
                 await loadGroups()
             }
+            .refreshable {
+                await loadGroups()
+            }
             .sheet(isPresented: $showAddGroup, onDismiss: {
-                Task {
-                    await loadGroups()
-                }
+                Task { await loadGroups() }
             }) {
                 AddGroupView()
             }
@@ -68,18 +71,31 @@ struct GroupListView: View {
 
     @MainActor
     private func loadGroups() async {
+        isLoading = true
+        errorMessage = nil
+
         do {
-            isLoading = true
             groups = try await APIClient.shared.fetchGroups()
-            errorMessage = nil
+        } catch let error as URLError {
+            handleAuthError(error)
         } catch {
             errorMessage = "Failed to load groups"
             print("❌ Group fetch error:", error)
         }
+
         isLoading = false
     }
 
-    // MARK: - Group Card (UNCHANGED UI)
+    private func handleAuthError(_ error: URLError) {
+        if error.code == .userAuthenticationRequired {
+            appState.isLoggedIn = false
+        } else {
+            errorMessage = "Session expired. Please login again."
+            appState.isLoggedIn = false
+        }
+    }
+
+    // MARK: - UI Components
 
     private func groupCard(_ group: Group) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -101,8 +117,6 @@ struct GroupListView: View {
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
-
-    // MARK: - Helpers
 
     private func fairnessBadge(_ score: Int) -> some View {
         Text("\(score)%")
