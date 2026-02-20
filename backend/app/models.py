@@ -7,6 +7,30 @@ from sqlalchemy.orm import relationship
 from .database import Base
 
 
+# ==============================
+# USER
+# ==============================
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+    # 🔥 NEW: Relationship to groups
+    groups = relationship(
+        "Group",
+        back_populates="owner",
+        cascade="all, delete-orphan"
+    )
+
+
+# ==============================
+# GROUP
+# ==============================
+
 class Group(Base):
     __tablename__ = "groups"
 
@@ -14,6 +38,23 @@ class Group(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
+    # 🔥 NEW: Link group to user
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    # 🔥 NEW: Relationship back to user
+    owner = relationship("User", back_populates="groups")
+
+    # Optional but recommended
+    expenses = relationship(
+        "Expense",
+        back_populates="group",
+        cascade="all, delete-orphan"
+    )
+
+
+# ==============================
+# EXPENSE
+# ==============================
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -25,13 +66,19 @@ class Expense(Base):
     paid_by = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-    # ✅ ADD THIS
+    # 🔥 NEW: Relationship to group
+    group = relationship("Group", back_populates="expenses")
+
     splits = relationship(
         "ExpenseSplit",
         back_populates="expense",
         cascade="all, delete-orphan"
     )
 
+
+# ==============================
+# EXPENSE SPLIT
+# ==============================
 
 class ExpenseSplit(Base):
     __tablename__ = "expense_splits"
@@ -41,9 +88,12 @@ class ExpenseSplit(Base):
     name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
 
-    # ✅ ADD THIS
     expense = relationship("Expense", back_populates="splits")
 
+
+# ==============================
+# SETTLEMENT
+# ==============================
 
 class Settlement(Base):
     __tablename__ = "settlements"
@@ -54,11 +104,3 @@ class Settlement(Base):
     to_user = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)

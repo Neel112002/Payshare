@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
 from app.database import get_db
 from app import schemas, crud
-from app.models import Expense
+from app.models import Expense, Group, User
+from app.auth.security import get_current_user
 from app.fairness.balances import calculate_balances, fairness_score
 from app.fairness.settlements import calculate_settlements
 
@@ -15,34 +16,47 @@ router = APIRouter(
 )
 
 # -------------------------------------------------
-# Create Group
+# Create Group (SECURED)
 # -------------------------------------------------
 @router.post("/", response_model=schemas.GroupOut)
 def create_group(
     group: schemas.GroupCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud.create_group(db, group)
+    new_group = Group(
+        name=group.name,
+        user_id=current_user.id
+    )
+
+    db.add(new_group)
+    db.commit()
+    db.refresh(new_group)
+
+    return new_group
 
 
 # -------------------------------------------------
-# List Groups (UPDATED)
+# List Groups (SECURED)
 # -------------------------------------------------
 @router.get("/", response_model=List[schemas.GroupListResponse])
-def list_groups(db: Session = Depends(get_db)):
-    groups = crud.get_groups(db)
+def list_groups(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    groups = (
+        db.query(Group)
+        .filter(Group.user_id == current_user.id)
+        .all()
+    )
 
     response = []
 
     for group in groups:
-        # Get expenses formatted for fairness logic
         expenses = crud.get_group_expenses_with_splits(db, group.id)
 
-        # Calculate fairness
         balances = calculate_balances(expenses)
         score = fairness_score(balances)
-
-        # TEMP (no auth yet): net group balance
         net_balance = round(sum(balances.values()), 2)
 
         response.append(
@@ -58,24 +72,50 @@ def list_groups(db: Session = Depends(get_db)):
 
 
 # -------------------------------------------------
-# Get Expenses for a Group
+# Get Expenses for Group (SECURED)
 # -------------------------------------------------
 @router.get("/{group_id}/expenses", response_model=List[schemas.ExpenseOut])
 def get_group_expenses(
     group_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    group = (
+        db.query(Group)
+        .filter(
+            Group.id == group_id,
+            Group.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not group:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     return crud.get_expenses_by_group(db, group_id)
 
 
 # -------------------------------------------------
-# Fairness / Group Health (UNCHANGED)
+# Fairness (SECURED)
 # -------------------------------------------------
 @router.get("/{group_id}/fairness")
 def get_group_fairness(
     group_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    group = (
+        db.query(Group)
+        .filter(
+            Group.id == group_id,
+            Group.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not group:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     expenses = (
         db.query(Expense)
         .filter(Expense.group_id == group_id)
@@ -83,10 +123,7 @@ def get_group_fairness(
     )
 
     if not expenses:
-        return {
-            "score": 100,
-            "balances": {}
-        }
+        return {"score": 100, "balances": {}}
 
     expense_data = [
         {
@@ -110,13 +147,26 @@ def get_group_fairness(
 
 
 # -------------------------------------------------
-# Settlements / Settle Up (UNCHANGED)
+# Settlements (SECURED)
 # -------------------------------------------------
 @router.get("/{group_id}/settlements")
 def get_group_settlements(
     group_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    group = (
+        db.query(Group)
+        .filter(
+            Group.id == group_id,
+            Group.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not group:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     expenses = (
         db.query(Expense)
         .filter(Expense.group_id == group_id)
@@ -141,7 +191,6 @@ def get_group_settlements(
     balances = calculate_balances(expense_data)
     settlements = calculate_settlements(balances)
 
-    # Persist settlements
     crud.save_settlements(db, group_id, settlements)
 
     return settlements
