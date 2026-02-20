@@ -81,7 +81,7 @@ final class APIClient {
 
     func fetchMe() async throws -> User {
 
-        var request = try authorizedRequest(path: "/me")
+        let request = try authorizedRequest(path: "/me/")
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -97,7 +97,7 @@ final class APIClient {
 
     func fetchGroups() async throws -> [Group] {
 
-        var request = try authorizedRequest(path: "/groups")
+        let request = try authorizedRequest(path: "/groups/")   // ✅ trailing slash FIX
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -111,8 +111,8 @@ final class APIClient {
 
     func createGroup(name: String) async throws {
 
-        var request = try authorizedRequest(
-            path: "/groups",
+        let request = try authorizedRequest(
+            path: "/groups/",   // ✅ trailing slash FIX
             method: "POST",
             body: ["name": name]
         )
@@ -129,8 +129,8 @@ final class APIClient {
 
     func fetchGroupExpenses(groupId: UUID) async throws -> [Expense] {
 
-        var request = try authorizedRequest(
-            path: "/groups/\(groupId.uuidString)/expenses"
+        let request = try authorizedRequest(
+            path: "/expenses/group/\(groupId.uuidString)"   // matches backend route
         )
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -153,7 +153,7 @@ final class APIClient {
         paidBy: String
     ) async throws {
 
-        var request = try authorizedRequest(
+        let request = try authorizedRequest(
             path: "/expenses",
             method: "POST",
             body: [
@@ -179,7 +179,7 @@ final class APIClient {
 
     func fetchGroupFairness(groupId: UUID) async throws -> FairnessResponse {
 
-        var request = try authorizedRequest(
+        let request = try authorizedRequest(
             path: "/groups/\(groupId.uuidString)/fairness"
         )
 
@@ -197,7 +197,7 @@ final class APIClient {
 
     func fetchGroupSettlements(groupId: UUID) async throws -> [SplitResult] {
 
-        var request = try authorizedRequest(
+        let request = try authorizedRequest(
             path: "/groups/\(groupId.uuidString)/settlements"
         )
 
