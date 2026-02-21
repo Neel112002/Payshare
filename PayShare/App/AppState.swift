@@ -9,6 +9,10 @@ final class AppState: ObservableObject {
 
     init() {
         checkAuthOnLaunch()
+        APIClient.shared.onUnauthorized = { [weak self] in
+              self?.isLoggedIn = false
+              self?.currentUser = nil
+          }
     }
 
     func checkAuthOnLaunch() {

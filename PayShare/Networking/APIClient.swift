@@ -4,6 +4,8 @@ final class APIClient {
     
     static let shared = APIClient()
     
+    var onUnauthorized: (() -> Void)?
+    
     private init() {
         self.authToken = KeychainService.loadToken()
     }
@@ -55,6 +57,7 @@ final class APIClient {
         ])
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -84,6 +87,7 @@ final class APIClient {
         let request = try authorizedRequest(path: "/me")
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -100,6 +104,7 @@ final class APIClient {
         let request = try authorizedRequest(path: "/groups/")
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -134,6 +139,7 @@ final class APIClient {
         )
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -209,6 +215,7 @@ final class APIClient {
         )
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -227,6 +234,7 @@ final class APIClient {
         )
         
         let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -255,6 +263,15 @@ final class APIClient {
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
             throw URLError(.badServerResponse)
+        }
+    }
+    
+    private func checkForUnauthorized(_ response: URLResponse) {
+        if let http = response as? HTTPURLResponse,
+           http.statusCode == 401 {
+
+            self.logout()            // clear token
+            onUnauthorized?()        // tell AppState
         }
     }
 
