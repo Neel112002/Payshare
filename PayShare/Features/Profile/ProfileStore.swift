@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 import Combine
 
 @MainActor
@@ -14,8 +13,6 @@ final class ProfileStore: ObservableObject {
         self.appState = appState
     }
 
-    // MARK: - Load Profile (/me)
-
     func loadProfile() async {
         isLoading = true
         defer { isLoading = false }
@@ -28,8 +25,6 @@ final class ProfileStore: ObservableObject {
             self.user = nil
         }
     }
-
-    // MARK: - Logout
 
     func logout() {
         APIClient.shared.logout()

@@ -9,15 +9,12 @@ struct ProfileView: View {
             content
                 .navigationTitle("Profile")
                 .task {
-                    // Load profile once when view appears
                     if profileStore.user == nil {
                         await profileStore.loadProfile()
                     }
                 }
         }
     }
-
-    // MARK: - Main Content
 
     @ViewBuilder
     private var content: some View {
@@ -29,8 +26,6 @@ struct ProfileView: View {
             loggedOutView
         }
     }
-
-    // MARK: - States
 
     private var loadingView: some View {
         VStack {
@@ -51,8 +46,6 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
-    // MARK: - Profile Content
 
     private func profileContent(_ user: User) -> some View {
         VStack(spacing: 16) {

@@ -66,3 +66,5 @@ def get_group_expenses(
     )
 
     return expenses
+
+

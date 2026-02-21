@@ -2,8 +2,8 @@ import SwiftUI
 
 struct RootView: View {
 
-    @StateObject private var appState = AppState()
-    @StateObject private var activityStore = ActivityStore()
+    @StateObject private var appState: AppState
+    @StateObject private var activityStore: ActivityStore
     @StateObject private var profileStore: ProfileStore
 
     init() {
@@ -14,11 +14,13 @@ struct RootView: View {
     }
 
     var body: some View {
-        ZStack {
+        SwiftUI.Group {
             if appState.isLoggedIn {
                 mainTabs
             } else {
-                LoginView()
+                NavigationStack {
+                    LoginView()
+                }
             }
         }
         .environmentObject(appState)
