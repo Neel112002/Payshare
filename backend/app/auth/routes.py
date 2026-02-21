@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+import secrets
 
 from app.database import get_db
+from app.models import User
 from app import models, schemas
 from app.auth.security import (
     hash_password,
@@ -116,6 +119,12 @@ def reset_password(
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters long"
+        )
 
     user.hashed_password = hash_password(request.new_password)
     db.commit()

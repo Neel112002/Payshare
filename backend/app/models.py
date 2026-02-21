@@ -19,7 +19,11 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-    # 🔥 NEW: Relationship to groups
+    # 🔐 Forgot Password Fields
+    reset_token = Column(String, nullable=True)
+    reset_token_expiry = Column(DateTime, nullable=True)
+
+    # Relationship to groups
     groups = relationship(
         "Group",
         back_populates="owner",
@@ -38,13 +42,11 @@ class Group(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-    # 🔥 NEW: Link group to user
+    # Link group to user
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
-    # 🔥 NEW: Relationship back to user
     owner = relationship("User", back_populates="groups")
 
-    # Optional but recommended
     expenses = relationship(
         "Expense",
         back_populates="group",
@@ -66,7 +68,6 @@ class Expense(Base):
     paid_by = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-    # 🔥 NEW: Relationship to group
     group = relationship("Group", back_populates="expenses")
 
     splits = relationship(
