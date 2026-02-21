@@ -81,7 +81,7 @@ final class APIClient {
     
     func fetchMe() async throws -> User {
         
-        let request = try authorizedRequest(path: "/me/")
+        let request = try authorizedRequest(path: "/me")
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
