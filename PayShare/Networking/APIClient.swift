@@ -123,6 +123,7 @@ final class APIClient {
         )
         
         let (_, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               (200...299).contains(http.statusCode) else {
@@ -199,6 +200,7 @@ final class APIClient {
         )
         
         let (_, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
         
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
@@ -259,6 +261,7 @@ final class APIClient {
         ])
 
         let (_, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
 
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
