@@ -235,4 +235,28 @@ final class APIClient {
         
         return try JSONDecoder().decode([SplitResult].self, from: data)
     }
+    
+    func register(name: String, email: String, password: String) async throws {
+
+        let url = baseURL.appending(path: "/auth/register")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "name": name,
+            "email": email,
+            "password": password
+        ])
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
 }
+

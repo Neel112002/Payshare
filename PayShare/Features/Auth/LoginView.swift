@@ -9,6 +9,9 @@ struct LoginView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    @State private var showRegister = false
+    @State private var showForgotPassword = false
+
     var body: some View {
         VStack(spacing: 24) {
 
@@ -51,9 +54,31 @@ struct LoginView: View {
             .buttonStyle(.borderedProminent)
             .disabled(isLoading || email.isEmpty || password.isEmpty)
 
+            // MARK: - Auth Navigation
+
+            VStack(spacing: 12) {
+
+                Button("Create Account") {
+                    showRegister = true
+                }
+
+                Button("Forgot Password?") {
+                    showForgotPassword = true
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
+
             Spacer()
         }
         .padding()
+        .sheet(isPresented: $showRegister) {
+            RegisterView()
+                .environmentObject(appState)
+        }
+        .sheet(isPresented: $showForgotPassword) {
+            ForgotPasswordView()
+        }
     }
 
     // MARK: - Login Logic
@@ -66,25 +91,17 @@ struct LoginView: View {
 
         Task {
             do {
-                try await APIClient.shared.login(
-                    email: email,
-                    password: password
-                )
+                await appState.login(email: email, password: password)
 
-                await MainActor.run {
-                    appState.isLoggedIn = true
-                    errorMessage = nil
+                if !appState.isLoggedIn {
+                    errorMessage = "Invalid email or password"
                 }
 
             } catch {
-                await MainActor.run {
-                    errorMessage = "Invalid email or password"
-                }
+                errorMessage = "Something went wrong"
             }
 
-            await MainActor.run {
-                isLoading = false
-            }
+            isLoading = false
         }
     }
 }
