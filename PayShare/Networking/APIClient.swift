@@ -277,6 +277,61 @@ final class APIClient {
             onUnauthorized?()        // tell AppState
         }
     }
+    
+    // MARK: - Forgot Password
 
+    func forgotPassword(email: String) async throws -> String {
+
+        let url = baseURL.appending(path: "/auth/forgot-password")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "email": email
+        ])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
+
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let token = json?["reset_token"] as? String ?? ""
+
+        print("🔐 Reset token received:", token)
+
+        return token
+    }
+
+
+    // MARK: - Reset Password
+
+    func resetPassword(token: String, newPassword: String) async throws {
+        
+        print("📤 Sending reset token:", token)
+        
+        let url = baseURL.appending(path: "/auth/reset-password")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "token": token,
+            "new_password": newPassword
+        ])
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
 }
 

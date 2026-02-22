@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -32,6 +33,31 @@ def hash_password(password: str):
 def verify_password(plain_password: str, hashed_password: str):
     return pwd_context.verify(plain_password, hashed_password)
 
+# ----------------------
+# Password Validation
+# ----------------------
+
+def validate_password_strength(password: str):
+
+    errors = []
+
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters long.")
+
+    if not re.search(r"[A-Z]", password):
+        errors.append("Password must contain at least one uppercase letter.")
+
+    if not re.search(r"[a-z]", password):
+        errors.append("Password must contain at least one lowercase letter.")
+
+    if not re.search(r"[0-9]", password):
+        errors.append("Password must contain at least one number.")
+
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        errors.append("Password must contain at least one special character.")
+
+    return errors
+
 
 # ----------------------
 # Access Token
@@ -39,7 +65,7 @@ def verify_password(plain_password: str, hashed_password: str):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(minutes=30)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

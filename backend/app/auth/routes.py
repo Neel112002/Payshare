@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-import secrets
-
 from app.database import get_db
-from app.models import User
 from app import models, schemas
 from app.auth.security import (
     hash_password,
     verify_password,
     create_access_token,
-    create_reset_token
+    create_reset_token,
+    validate_password_strength   # ✅ fixed import
 )
 from jose import jwt, JWTError
 from app.auth.security import SECRET_KEY, ALGORITHM
@@ -24,6 +21,15 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=schemas.UserOut)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+
+    # 🔐 Strong password validation
+    errors = validate_password_strength(user.password)
+    if errors:
+        raise HTTPException(
+            status_code=400,
+            detail=errors
+        )
+
     existing = db.query(models.User).filter(
         models.User.email == user.email
     ).first()
@@ -50,6 +56,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+
     db_user = db.query(models.User).filter(
         models.User.email == user.email
     ).first()
@@ -74,10 +81,12 @@ def forgot_password(
     request: schemas.ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
+
     user = db.query(models.User).filter(
         models.User.email == request.email
     ).first()
 
+    # 🔒 Do not reveal whether email exists
     if not user:
         return {"message": "If email exists, reset link sent."}
 
@@ -98,13 +107,13 @@ def reset_password(
     request: schemas.ResetPasswordRequest,
     db: Session = Depends(get_db)
 ):
+
     try:
         payload = jwt.decode(
             request.token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
-
         email = payload.get("sub")
 
     except JWTError:
@@ -119,11 +128,13 @@ def reset_password(
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    if len(request.new_password) < 8:
+
+    # 🔐 Strong password validation
+    errors = validate_password_strength(request.new_password)
+    if errors:
         raise HTTPException(
             status_code=400,
-            detail="Password must be at least 8 characters long"
+            detail=errors
         )
 
     user.hashed_password = hash_password(request.new_password)
