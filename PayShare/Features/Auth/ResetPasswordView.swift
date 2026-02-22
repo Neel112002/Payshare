@@ -2,17 +2,16 @@ import SwiftUI
 
 struct ResetPasswordView: View {
 
+    let token: String   // 👈 Accept token from previous screen
+
     @Environment(\.dismiss) private var dismiss
 
-    @State private var token: String = ""
     @State private var newPassword: String = ""
     @State private var confirmPassword: String = ""
 
     @State private var isLoading = false
     @State private var message: String?
     @State private var errorMessage: String?
-
-    // MARK: - Password Rules
 
     private var passwordRules: [PasswordRule] {
         PasswordValidator.validate(newPassword)
@@ -33,18 +32,12 @@ struct ResetPasswordView: View {
                 Text("Reset Password")
                     .font(.largeTitle.bold())
 
-                TextField("Reset Token", text: $token)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-
                 SecureField("New Password", text: $newPassword)
                     .textFieldStyle(.roundedBorder)
 
                 SecureField("Confirm Password", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
 
-                // 🔐 Live Password Rules
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(passwordRules) { rule in
                         HStack {
@@ -57,7 +50,6 @@ struct ResetPasswordView: View {
                         }
                     }
 
-                    // Confirm password check
                     if !confirmPassword.isEmpty {
                         HStack {
                             Image(systemName: doPasswordsMatch ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -69,13 +61,11 @@ struct ResetPasswordView: View {
                         }
                     }
                 }
-                .padding(.top, 4)
 
                 if let errorMessage {
                     Text(errorMessage)
                         .foregroundColor(.red)
                         .font(.footnote)
-                        .multilineTextAlignment(.center)
                 }
 
                 if let message {
@@ -85,9 +75,7 @@ struct ResetPasswordView: View {
                 }
 
                 Button {
-                    Task {
-                        await resetPassword()
-                    }
+                    Task { await resetPassword() }
                 } label: {
                     if isLoading {
                         ProgressView()
@@ -99,7 +87,6 @@ struct ResetPasswordView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(
-                    token.isEmpty ||
                     newPassword.isEmpty ||
                     confirmPassword.isEmpty ||
                     !isPasswordValid ||
@@ -112,8 +99,6 @@ struct ResetPasswordView: View {
             .padding()
         }
     }
-
-    // MARK: - Reset Logic
 
     private func resetPassword() async {
         isLoading = true
@@ -128,33 +113,14 @@ struct ResetPasswordView: View {
 
             message = "Password successfully reset 🎉"
 
-            // Optional: auto dismiss after success
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 dismiss()
             }
 
         } catch {
-            errorMessage = parseBackendError(error)
+            errorMessage = "Failed to reset password"
         }
 
         isLoading = false
-    }
-
-    private func parseBackendError(_ error: Error) -> String {
-        if let error = error as? NSError,
-           let data = error.userInfo["data"] as? Data,
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let detail = json["detail"] {
-
-            if let messages = detail as? [String] {
-                return messages.joined(separator: "\n")
-            }
-
-            if let message = detail as? String {
-                return message
-            }
-        }
-
-        return "Failed to reset password"
     }
 }

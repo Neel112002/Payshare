@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.services.email_service import send_reset_email
 from app.database import get_db
 from app import models, schemas
 from app.auth.security import (
@@ -81,22 +82,20 @@ def forgot_password(
     request: schemas.ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
-
     user = db.query(models.User).filter(
         models.User.email == request.email
     ).first()
 
-    # 🔒 Do not reveal whether email exists
+    # Always return generic message (security best practice)
     if not user:
         return {"message": "If email exists, reset link sent."}
 
     reset_token = create_reset_token(user.email)
 
-    return {
-        "message": "Reset token generated (dev mode)",
-        "reset_token": reset_token
-    }
+    # 🔥 Send real email
+    send_reset_email(user.email, reset_token)
 
+    return {"message": "If email exists, reset link sent."}
 
 # -----------------------
 # Reset Password
