@@ -53,9 +53,6 @@ struct ProfileView: View {
                         // Future navigation
                     }
 
-                    profileRow(icon: "key.fill", title: "Reset Password") {
-                        // Navigate to ForgotPasswordView
-                    }
 
                     profileRow(icon: "trash.fill", title: "Delete Account", color: .red) {
                         // Future delete logic
