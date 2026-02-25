@@ -47,21 +47,20 @@ struct ProfileView: View {
 
                 Section("Account") {
 
-                    Button("Test Change Password") {
-                        Task {
-                            do {
-                                try await APIClient.shared.changePassword(
-                                    currentPassword: "123@Neel",
-                                    newPassword: "NewStrongPass1!"
-                                )
-                                print("✅ Password changed successfully")
-                            } catch {
-                                print("❌ Change password failed:", error)
-                            }
-                        }
+                    NavigationLink {
+                        ChangePasswordView()
+                    } label: {
+                        Label("Change Password", systemImage: "lock.fill")
+                    }
+
+                    Button(role: .destructive) {
+                        // Delete account later
+                    } label: {
+                        Label("Delete Account", systemImage: "trash")
                     }
                 }
-                // MARK: - Logout
+
+                // MARK: - Logout Section
 
                 Section {
                     Button(role: .destructive) {
@@ -72,7 +71,7 @@ struct ProfileView: View {
                     }
                 }
 
-                // MARK: - Version
+                // MARK: - Version Section
 
                 Section {
                     HStack {

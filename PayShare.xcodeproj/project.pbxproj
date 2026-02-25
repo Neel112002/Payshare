@@ -38,6 +38,7 @@
 				Assets.xcassets,
 				ContentView.swift,
 				Features/Activity/ActivityView.swift,
+				Features/Auth/ChangePasswordView.swift,
 				Features/Auth/ForgotPasswordView.swift,
 				Features/Auth/LoginView.swift,
 				Features/Auth/RegisterView.swift,
