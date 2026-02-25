@@ -8,80 +8,111 @@ struct LoginView: View {
     @State private var password = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
-
-    @State private var showRegister = false
-    @State private var showForgotPassword = false
+    @State private var showPassword = false
 
     var body: some View {
-        VStack(spacing: 24) {
+        ZStack {
 
-            Spacer()
+            // Background
+            LinearGradient(
+                colors: [Color.blue.opacity(0.15), Color.white],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            Text("PayShare")
-                .font(.largeTitle.bold())
+            VStack {
 
-            Text("Login")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+                Spacer()
 
-            VStack(spacing: 12) {
+                VStack(spacing: 24) {
 
-                TextField("Email", text: $email)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.emailAddress)
-                    .textFieldStyle(.roundedBorder)
+                    // App Logo Area
+                    VStack(spacing: 8) {
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.blue)
 
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-            }
+                        Text("PayShare")
+                            .font(.largeTitle.bold())
+                    }
 
-            if let errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.red)
-                    .font(.footnote)
-            }
+                    VStack(spacing: 16) {
 
-            Button(action: login) {
-                if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Text("Login")
-                        .frame(maxWidth: .infinity)
+                        // Email Field
+                        TextField("Email", text: $email)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.emailAddress)
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.05), radius: 5)
+
+                        // Password Field
+                        HStack {
+                            if showPassword {
+                                TextField("Password", text: $password)
+                            } else {
+                                SecureField("Password", text: $password)
+                            }
+
+                            Button {
+                                showPassword.toggle()
+                            } label: {
+                                Image(systemName: showPassword ? "eye.slash" : "eye")
+                                    .foregroundStyle(.gray)
+                            }
+                        }
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.05), radius: 5)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.footnote)
+                    }
+
+                    // Login Button
+                    Button(action: login) {
+                        if isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Login")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .shadow(color: .blue.opacity(0.3), radius: 10)
+                    .disabled(email.isEmpty || password.isEmpty || isLoading)
+
+                    // Links
+                    VStack(spacing: 8) {
+                        NavigationLink("Forgot Password?", destination: ForgotPasswordView())
+                            .font(.footnote)
+
+                        NavigationLink("Create Account", destination: RegisterView())
+                            .font(.footnote.bold())
+                    }
+                    .foregroundStyle(.blue)
                 }
+                .padding(32)
+                .background(Color.white.opacity(0.8))
+                .cornerRadius(24)
+                .padding()
+
+                Spacer()
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(isLoading || email.isEmpty || password.isEmpty)
-
-            // MARK: - Auth Navigation
-
-            VStack(spacing: 12) {
-
-                Button("Create Account") {
-                    showRegister = true
-                }
-
-                Button("Forgot Password?") {
-                    showForgotPassword = true
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-        }
-        .padding()
-        .sheet(isPresented: $showRegister) {
-            RegisterView()
-                .environmentObject(appState)
-        }
-        .sheet(isPresented: $showForgotPassword) {
-            ForgotPasswordView()
         }
     }
-
-    // MARK: - Login Logic
 
     private func login() {
         guard !email.isEmpty, !password.isEmpty else { return }
@@ -91,17 +122,19 @@ struct LoginView: View {
 
         Task {
             do {
-                await appState.login(email: email, password: password)
-
-                if !appState.isLoggedIn {
+                try await APIClient.shared.login(email: email, password: password)
+                await MainActor.run {
+                    appState.isLoggedIn = true
+                }
+            } catch {
+                await MainActor.run {
                     errorMessage = "Invalid email or password"
                 }
-
-            } catch {
-                errorMessage = "Something went wrong"
             }
 
-            isLoading = false
+            await MainActor.run {
+                isLoading = false
+            }
         }
     }
 }
