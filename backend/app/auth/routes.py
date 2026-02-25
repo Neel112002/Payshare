@@ -167,3 +167,15 @@ def change_password(
     db.commit()
 
     return {"message": "Password updated successfully"}
+
+# Delete Acccount #
+
+@router.delete("/delete-account")
+def delete_account(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    db.delete(current_user)
+    db.commit()
+
+    return {"message": "Account deleted successfully"}
