@@ -333,5 +333,30 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
     }
+    
+    // MARK: - Change Password
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+
+        let request = try authorizedRequest(
+            path: "/auth/change-password",
+            method: "POST",
+            body: [
+                "current_password": currentPassword,
+                "new_password": newPassword
+            ]
+        )
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
+
+        guard let http = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+
+        if http.statusCode != 200 {
+            throw URLError(.badServerResponse)
+        }
+    }
 }
 
