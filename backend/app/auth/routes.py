@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.services.email_service import send_reset_email
 from app.database import get_db
 from app import models, schemas
+from app.auth.security import get_current_user
 from app.auth.security import (
     hash_password,
     verify_password,
@@ -140,3 +141,29 @@ def reset_password(
     db.commit()
 
     return {"message": "Password reset successful"}
+
+# -----------------------
+# Change Password
+# -----------------------
+
+@router.post("/change-password")
+def change_password(
+    request: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1️⃣ Verify current password
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Current password is incorrect"
+        )
+
+    # 2️⃣ Validate new password strength
+    validate_password_strength(request.new_password)
+
+    # 3️⃣ Update password
+    current_user.hashed_password = hash_password(request.new_password)
+    db.commit()
+
+    return {"message": "Password updated successfully"}
