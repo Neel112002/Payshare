@@ -36,10 +36,13 @@ struct ProfileView: View {
                             .font(.footnote)
                             .foregroundColor(.gray)
 
-                        Button("Edit Profile") {
-                            // Next feature
+                        // ✅ EDIT PROFILE CONNECTED
+                        NavigationLink {
+                            EditProfileView()
+                        } label: {
+                            Text("Edit Profile")
+                                .font(.footnote)
                         }
-                        .font(.footnote)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical)

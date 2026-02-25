@@ -45,6 +45,7 @@
 				Features/Auth/ResetPasswordView.swift,
 				Features/Expenses/AddExpenseView.swift,
 				Features/Expenses/SplitEditorView.swift,
+				Features/Profile/EditProfileView.swift,
 				Features/Profile/ProfileStore.swift,
 				Features/Profile/ProfileView.swift,
 				Groups/AddGroupView.swift,

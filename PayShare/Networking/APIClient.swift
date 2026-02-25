@@ -376,5 +376,27 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
     }
+    
+    func updateProfile(name: String, email: String) async throws -> User {
+
+        let request = try authorizedRequest(
+            path: "/auth/update-profile",
+            method: "PUT",
+            body: [
+                "name": name,
+                "email": email
+            ]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
+
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        return try JSONDecoder().decode(User.self, from: data)
+    }
 }
 
