@@ -179,3 +179,35 @@ def delete_account(
     db.commit()
 
     return {"message": "Account deleted successfully"}
+
+# -----------------------
+# Update Profile
+# -----------------------
+
+@router.put("/update-profile", response_model=schemas.UserOut)
+def update_profile(
+    request: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Update name
+    current_user.name = request.name
+
+    # Optional: update email (check if already taken)
+    if request.email != current_user.email:
+        existing = db.query(models.User).filter(
+            models.User.email == request.email
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already in use"
+            )
+
+        current_user.email = request.email
+
+    db.commit()
+    db.refresh(current_user)
+
+    return current_user

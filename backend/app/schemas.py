@@ -136,3 +136,11 @@ class ResetPasswordRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+# -----------------------
+# Update Profile
+# -----------------------
+
+class UserUpdate(BaseModel):
+    name: str
+    email: str
