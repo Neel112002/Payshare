@@ -358,5 +358,23 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
     }
+    
+    // MARK: - Delete Account
+
+    func deleteAccount() async throws {
+
+        let request = try authorizedRequest(
+            path: "/auth/delete-account",
+            method: "DELETE"
+        )
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
+
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
 }
 

@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct ProfileView: View {
-
+    
     @EnvironmentObject var appState: AppState
+    
+    @State private var showDeleteAlert = false
+    @State private var isDeleting = false
 
     var body: some View {
 
@@ -34,7 +37,7 @@ struct ProfileView: View {
                             .foregroundColor(.gray)
 
                         Button("Edit Profile") {
-                            // Future edit screen
+                            // Next feature
                         }
                         .font(.footnote)
                     }
@@ -54,7 +57,7 @@ struct ProfileView: View {
                     }
 
                     Button(role: .destructive) {
-                        // Delete account later
+                        showDeleteAlert = true
                     } label: {
                         Label("Delete Account", systemImage: "trash")
                     }
@@ -87,6 +90,38 @@ struct ProfileView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Profile")
+            .alert("Delete Account?",
+                   isPresented: $showDeleteAlert) {
+
+                Button("Delete", role: .destructive) {
+                    Task { await deleteAccount() }
+                }
+
+                Button("Cancel", role: .cancel) { }
+
+            } message: {
+                Text("This action is permanent and cannot be undone.")
+            }
         }
+    }
+
+    // MARK: - Delete Logic
+
+    private func deleteAccount() async {
+
+        isDeleting = true
+
+        do {
+            try await APIClient.shared.deleteAccount()
+
+            await MainActor.run {
+                appState.logout()
+            }
+
+        } catch {
+            print("❌ Delete failed:", error)
+        }
+
+        isDeleting = false
     }
 }
