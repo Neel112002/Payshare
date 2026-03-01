@@ -47,7 +47,6 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
 
     is_active = Column(Boolean, default=True)
-
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -111,6 +110,13 @@ class Expense(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+    # ✅ THIS FIXES YOUR ERROR
+    splits = relationship(
+        "ExpenseSplit",
+        back_populates="expense",
+        cascade="all, delete-orphan"
+    )
+
 
 # -----------------------------
 # EXPENSE SPLITS
@@ -125,8 +131,13 @@ class ExpenseSplit(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
     amount = Column(Numeric(12, 2), nullable=False)
-
     is_active = Column(Boolean, default=True)
+
+    # ✅ REQUIRED FOR ORM SERIALIZATION
+    expense = relationship(
+        "Expense",
+        back_populates="splits"
+    )
 
 
 # -----------------------------
