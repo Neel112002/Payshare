@@ -1,15 +1,42 @@
 import uuid
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey
+from datetime import datetime
+
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    ForeignKey,
+    Boolean,
+    Integer,
+    Numeric,
+    Enum,
+    UniqueConstraint
+)
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from app.database import Base
+import enum
 
-from .database import Base
+
+# -----------------------------
+# ENUMS
+# -----------------------------
+
+class GroupRole(str, enum.Enum):
+    owner = "owner"
+    admin = "admin"
+    member = "member"
 
 
-# ==============================
-# USER
-# ==============================
+class LedgerReferenceType(str, enum.Enum):
+    expense = "expense"
+    settlement = "settlement"
+    adjustment = "adjustment"
+
+
+# -----------------------------
+# USERS
+# -----------------------------
 
 class User(Base):
     __tablename__ = "users"
@@ -19,119 +46,129 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-    reset_token = Column(String, nullable=True)
-    reset_token_expiry = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
 
-    groups = relationship(
-        "GroupMember",
-        back_populates="user",
-        cascade="all, delete-orphan"
-    )
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==============================
-# GROUP
-# ==============================
+# -----------------------------
+# GROUPS
+# -----------------------------
 
 class Group(Base):
     __tablename__ = "groups"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
+    base_currency = Column(String, nullable=False)
 
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    is_active = Column(Boolean, default=True)
 
-    owner = relationship("User")
-    members = relationship(
-        "GroupMember",
-        back_populates="group",
-        cascade="all, delete-orphan"
-    )
-
-    expenses = relationship(
-        "Expense",
-        back_populates="group",
-        cascade="all, delete-orphan"
-    )
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==============================
-# GROUP MEMBER (NEW)
-# ==============================
+# -----------------------------
+# GROUP MEMBERS
+# -----------------------------
 
 class GroupMember(Base):
     __tablename__ = "group_members"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    joined_at = Column(DateTime, server_default=func.now())
 
-    group = relationship("Group", back_populates="members")
-    user = relationship("User", back_populates="groups")
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+    role = Column(Enum(GroupRole), default=GroupRole.member)
+
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_user"),
+    )
 
 
-# ==============================
-# EXPENSE
-# ==============================
+# -----------------------------
+# EXPENSES (VERSIONED)
+# -----------------------------
 
 class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id"))
     title = Column(String, nullable=False)
-    total_amount = Column(Float, nullable=False)
 
-    paid_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    total_amount = Column(Numeric(12, 2), nullable=False)
+    paid_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
-    created_at = Column(DateTime, server_default=func.now())
+    version = Column(Integer, default=1)
+    is_active = Column(Boolean, default=True)
 
-    group = relationship("Group", back_populates="expenses")
-    payer = relationship("User", foreign_keys=[paid_by])
-    creator = relationship("User", foreign_keys=[created_by])
-
-    splits = relationship(
-        "ExpenseSplit",
-        back_populates="expense",
-        cascade="all, delete-orphan"
-    )
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
 
 
-# ==============================
-# EXPENSE SPLIT
-# ==============================
+# -----------------------------
+# EXPENSE SPLITS
+# -----------------------------
 
 class ExpenseSplit(Base):
     __tablename__ = "expense_splits"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
 
-    expense = relationship("Expense", back_populates="splits")
-    user = relationship("User")
+    is_active = Column(Boolean, default=True)
 
 
-# ==============================
-# SETTLEMENT
-# ==============================
+# -----------------------------
+# LEDGER ENTRIES (CORE ENGINE)
+# -----------------------------
+
+class LedgerEntry(Base):
+    __tablename__ = "ledger_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id"))
+
+    from_user = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    to_user = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+    amount = Column(Numeric(12, 2), nullable=False)
+
+    reference_type = Column(Enum(LedgerReferenceType), nullable=False)
+    reference_id = Column(UUID(as_uuid=True))
+
+    is_active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# -----------------------------
+# SETTLEMENTS
+# -----------------------------
 
 class Settlement(Base):
     __tablename__ = "settlements"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
-    from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    to_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id"))
 
-    amount = Column(Float, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
+    from_user = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    to_user = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+    amount = Column(Numeric(12, 2), nullable=False)
+
+    is_active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
