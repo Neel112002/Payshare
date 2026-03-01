@@ -3,10 +3,8 @@ import SwiftUI
 struct ForgotPasswordView: View {
 
     @State private var email = ""
-    @State private var resetToken = ""
     @State private var message: String?
     @State private var isLoading = false
-    @State private var navigateToReset = false
 
     var body: some View {
         NavigationStack {
@@ -45,9 +43,6 @@ struct ForgotPasswordView: View {
                 Spacer()
             }
             .padding()
-            .navigationDestination(isPresented: $navigateToReset) {
-                ResetPasswordView(token: resetToken)
-            }
         }
     }
 
@@ -56,15 +51,8 @@ struct ForgotPasswordView: View {
         message = nil
 
         do {
-            let token = try await APIClient.shared.forgotPassword(email: email)
-
-            if token.isEmpty {
-                message = "Email not found."
-            } else {
-                resetToken = token
-                navigateToReset = true
-            }
-
+            try await APIClient.shared.forgotPassword(email: email)
+            message = "If an account exists, a reset link has been sent."
         } catch {
             message = "Something went wrong."
         }
