@@ -19,14 +19,12 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-    # 🔐 Forgot Password Fields
     reset_token = Column(String, nullable=True)
     reset_token_expiry = Column(DateTime, nullable=True)
 
-    # Relationship to groups
     groups = relationship(
-        "Group",
-        back_populates="owner",
+        "GroupMember",
+        back_populates="user",
         cascade="all, delete-orphan"
     )
 
@@ -42,16 +40,36 @@ class Group(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
-    # Link group to user
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
 
-    owner = relationship("User", back_populates="groups")
+    owner = relationship("User")
+    members = relationship(
+        "GroupMember",
+        back_populates="group",
+        cascade="all, delete-orphan"
+    )
 
     expenses = relationship(
         "Expense",
         back_populates="group",
         cascade="all, delete-orphan"
     )
+
+
+# ==============================
+# GROUP MEMBER (NEW)
+# ==============================
+
+class GroupMember(Base):
+    __tablename__ = "group_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    joined_at = Column(DateTime, server_default=func.now())
+
+    group = relationship("Group", back_populates="members")
+    user = relationship("User", back_populates="groups")
 
 
 # ==============================
@@ -62,13 +80,20 @@ class Expense(Base):
     __tablename__ = "expenses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id"))
+
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+
     title = Column(String, nullable=False)
     total_amount = Column(Float, nullable=False)
-    paid_by = Column(String, nullable=False)
+
+    paid_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
     created_at = Column(DateTime, server_default=func.now())
 
     group = relationship("Group", back_populates="expenses")
+    payer = relationship("User", foreign_keys=[paid_by])
+    creator = relationship("User", foreign_keys=[created_by])
 
     splits = relationship(
         "ExpenseSplit",
@@ -85,11 +110,14 @@ class ExpenseSplit(Base):
     __tablename__ = "expense_splits"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id"))
-    name = Column(String, nullable=False)
+
+    expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
     amount = Column(Float, nullable=False)
 
     expense = relationship("Expense", back_populates="splits")
+    user = relationship("User")
 
 
 # ==============================
@@ -100,8 +128,10 @@ class Settlement(Base):
     __tablename__ = "settlements"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    group_id = Column(UUID(as_uuid=True))
-    from_user = Column(String, nullable=False)
-    to_user = Column(String, nullable=False)
+
+    group_id = Column(UUID(as_uuid=True), ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
+    from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    to_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
     amount = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())

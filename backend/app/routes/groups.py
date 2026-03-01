@@ -5,7 +5,7 @@ from uuid import UUID
 
 from app.database import get_db
 from app import schemas, crud
-from app.models import Expense, Group, User
+from app.models import Expense, Group, User, GroupMember
 from app.auth.security import get_current_user
 from app.fairness.balances import calculate_balances, fairness_score
 from app.fairness.settlements import calculate_settlements
@@ -15,8 +15,26 @@ router = APIRouter(
     tags=["Groups"]
 )
 
+
 # -------------------------------------------------
-# Create Group (SECURED)
+# Helper: Verify Membership
+# -------------------------------------------------
+def verify_membership(db: Session, group_id: UUID, user_id: UUID):
+    membership = (
+        db.query(GroupMember)
+        .filter(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == user_id
+        )
+        .first()
+    )
+
+    if not membership:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+
+# -------------------------------------------------
+# Create Group
 # -------------------------------------------------
 @router.post("/", response_model=schemas.GroupOut)
 def create_group(
@@ -26,33 +44,48 @@ def create_group(
 ):
     new_group = Group(
         name=group.name,
-        user_id=current_user.id
+        owner_id=current_user.id
     )
 
     db.add(new_group)
     db.commit()
     db.refresh(new_group)
 
+    # Add owner as member
+    owner_membership = GroupMember(
+        group_id=new_group.id,
+        user_id=current_user.id
+    )
+
+    db.add(owner_membership)
+    db.commit()
+
     return new_group
 
 
 # -------------------------------------------------
-# List Groups (SECURED)
+# List Groups (User Membership Based)
 # -------------------------------------------------
 @router.get("/", response_model=List[schemas.GroupListResponse])
 def list_groups(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    groups = (
-        db.query(Group)
-        .filter(Group.user_id == current_user.id)
+    memberships = (
+        db.query(GroupMember)
+        .filter(GroupMember.user_id == current_user.id)
         .all()
     )
 
     response = []
 
-    for group in groups:
+    for membership in memberships:
+        group = (
+            db.query(Group)
+            .filter(Group.id == membership.group_id)
+            .first()
+        )
+
         expenses = crud.get_group_expenses_with_splits(db, group.id)
 
         balances = calculate_balances(expenses)
@@ -72,7 +105,7 @@ def list_groups(
 
 
 # -------------------------------------------------
-# Get Expenses for Group (SECURED)
+# Get Expenses for Group
 # -------------------------------------------------
 @router.get("/{group_id}/expenses", response_model=List[schemas.ExpenseOut])
 def get_group_expenses(
@@ -80,23 +113,13 @@ def get_group_expenses(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    group = (
-        db.query(Group)
-        .filter(
-            Group.id == group_id,
-            Group.user_id == current_user.id
-        )
-        .first()
-    )
-
-    if not group:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    verify_membership(db, group_id, current_user.id)
 
     return crud.get_expenses_by_group(db, group_id)
 
 
 # -------------------------------------------------
-# Fairness (SECURED)
+# Fairness
 # -------------------------------------------------
 @router.get("/{group_id}/fairness")
 def get_group_fairness(
@@ -104,17 +127,7 @@ def get_group_fairness(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    group = (
-        db.query(Group)
-        .filter(
-            Group.id == group_id,
-            Group.user_id == current_user.id
-        )
-        .first()
-    )
-
-    if not group:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    verify_membership(db, group_id, current_user.id)
 
     expenses = (
         db.query(Expense)
@@ -127,10 +140,10 @@ def get_group_fairness(
 
     expense_data = [
         {
-            "paid_by": e.paid_by,
+            "paid_by": str(e.paid_by),
             "total_amount": e.total_amount,
             "splits": [
-                {"name": s.name, "amount": s.amount}
+                {"user_id": str(s.user_id), "amount": s.amount}
                 for s in e.splits
             ]
         }
@@ -147,7 +160,7 @@ def get_group_fairness(
 
 
 # -------------------------------------------------
-# Settlements (SECURED)
+# Settlements
 # -------------------------------------------------
 @router.get("/{group_id}/settlements")
 def get_group_settlements(
@@ -155,17 +168,7 @@ def get_group_settlements(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    group = (
-        db.query(Group)
-        .filter(
-            Group.id == group_id,
-            Group.user_id == current_user.id
-        )
-        .first()
-    )
-
-    if not group:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    verify_membership(db, group_id, current_user.id)
 
     expenses = (
         db.query(Expense)
@@ -178,10 +181,10 @@ def get_group_settlements(
 
     expense_data = [
         {
-            "paid_by": e.paid_by,
+            "paid_by": str(e.paid_by),
             "total_amount": e.total_amount,
             "splits": [
-                {"name": s.name, "amount": s.amount}
+                {"user_id": str(s.user_id), "amount": s.amount}
                 for s in e.splits
             ]
         }
