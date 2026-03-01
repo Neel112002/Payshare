@@ -6,6 +6,7 @@ from .database import Base, engine
 from .routes import groups, expenses
 from app.routes import profile
 from app.auth import routes as auth
+from app.routes import settlements
 
 import os
 load_dotenv()
@@ -24,6 +25,7 @@ app.include_router(groups.router)
 app.include_router(expenses.router)
 app.include_router(profile.router)
 app.include_router(auth.router)
+app.include_router(settlements.router)
 
 # Health Check
 
