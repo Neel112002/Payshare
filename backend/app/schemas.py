@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import List
 from uuid import UUID
 from datetime import datetime
-from pydantic import EmailStr
+
 
 # =========================
 # AUTH SCHEMAS
@@ -19,7 +19,7 @@ class UserLogin(BaseModel):
     password: str
 
 
-class Token(BaseModel):
+class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
@@ -29,12 +29,27 @@ class UserOut(BaseModel):
     name: str
     email: str
 
-    model_config = {
-        "from_attributes": True,
-        "json_encoders": {
-            UUID: lambda v: str(v)
-        }
-    }
+    class Config:
+        from_attributes = True
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UserUpdate(BaseModel):
+    name: str
+    email: EmailStr
 
 
 # =========================
@@ -62,11 +77,11 @@ class GroupListResponse(BaseModel):
 
 
 # =========================
-# EXPENSE SCHEMAS
+# EXPENSE SCHEMAS (UUID BASED)
 # =========================
 
-class SplitCreate(BaseModel):
-    name: str
+class ExpenseSplitCreate(BaseModel):
+    user_id: UUID
     amount: float
 
 
@@ -74,12 +89,12 @@ class ExpenseCreate(BaseModel):
     group_id: UUID
     title: str
     total_amount: float
-    paid_by: str
-    splits: List[SplitCreate]
+    paid_by: UUID
+    splits: List[ExpenseSplitCreate]
 
 
 class ExpenseSplitOut(BaseModel):
-    name: str
+    user_id: UUID
     amount: float
 
     class Config:
@@ -90,7 +105,7 @@ class ExpenseOut(BaseModel):
     id: UUID
     title: str
     total_amount: float
-    paid_by: str
+    paid_by: UUID
     created_at: datetime
     splits: List[ExpenseSplitOut]
 
@@ -102,45 +117,7 @@ class ExpenseResponse(BaseModel):
     id: UUID
     title: str
     total_amount: float
-    paid_by: str
+    paid_by: UUID
 
     class Config:
         from_attributes = True
-
-
-
-class UserCreate(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
-
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
-
-# -----------------------
-# Update Profile
-# -----------------------
-
-class UserUpdate(BaseModel):
-    name: str
-    email: str
