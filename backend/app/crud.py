@@ -28,18 +28,18 @@ def get_group_by_id(db: Session, group_id: UUID):
 
 def get_group_expenses_with_splits(db: Session, group_id: UUID):
     """
-    Returns expenses in the exact shape required by
-    calculate_balances():
+    Returns expenses in UUID-based structure:
     [
         {
-            "paid_by": str,
+            "paid_by": UUID,
             "total_amount": float,
             "splits": [
-                { "name": str, "amount": float }
+                { "user_id": UUID, "amount": float }
             ]
         }
     ]
     """
+
     expenses = (
         db.query(Expense)
         .filter(Expense.group_id == group_id)
@@ -60,7 +60,7 @@ def get_group_expenses_with_splits(db: Session, group_id: UUID):
             "total_amount": expense.total_amount,
             "splits": [
                 {
-                    "name": split.name,
+                    "user_id": split.user_id,
                     "amount": split.amount
                 }
                 for split in splits
@@ -83,13 +83,13 @@ def create_expense(db: Session, expense: ExpenseCreate):
     )
 
     db.add(db_expense)
-    db.flush()  # ensures db_expense.id is available
+    db.flush()  # ensures db_expense.id exists
 
     for split in expense.splits:
         db.add(
             ExpenseSplit(
                 expense_id=db_expense.id,
-                name=split.name,
+                user_id=split.user_id,
                 amount=split.amount
             )
         )
@@ -113,12 +113,11 @@ def get_expenses_by_group(db: Session, group_id: UUID):
 # --------------------
 
 def save_settlements(db: Session, group_id: UUID, settlements: list):
-    # Remove old settlements
+
     db.query(Settlement).filter(
         Settlement.group_id == group_id
     ).delete()
 
-    # Insert new settlements
     for s in settlements:
         db.add(
             Settlement(

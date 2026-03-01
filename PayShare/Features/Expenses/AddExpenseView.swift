@@ -8,7 +8,6 @@ struct AddExpenseView: View {
     
     @State private var title: String = ""
     @State private var amountText: String = ""
-    @State private var paidBy: String = "You"
     @State private var isSaving = false
     
     var body: some View {
@@ -25,11 +24,6 @@ struct AddExpenseView: View {
                     TextField("Amount", text: $amountText)
                         .keyboardType(.decimalPad)
                     
-                    Picker("Paid by", selection: $paidBy) {
-                        Text("You").tag("You")
-                        Text("Alex").tag("Alex")
-                        Text("Sam").tag("Sam")
-                    }
                 }
             }
             .navigationTitle("Add Expense")
@@ -51,32 +45,27 @@ struct AddExpenseView: View {
     }
     
     // MARK: - Save Expense (BACKEND)
-    
-    @EnvironmentObject var profileStore: ProfileStore
-    
+        
     @MainActor
     private func saveExpense() async {
-        guard let total = Double(amountText),
-              let currentUser = profileStore.user else { return }
-        
+        print("🔥 Save tapped")
+
+        guard let total = Double(amountText) else { return }
+
         isSaving = true
         defer { isSaving = false }
-        
+
         do {
             try await APIClient.shared.createExpense(
                 groupId: groupId,
                 title: title,
-                totalAmount: total,
-                paidBy: currentUser.id,
-                splits: [
-                    (userId: currentUser.id, amount: total)
-                ]
+                totalAmount: total
             )
-            
+
             dismiss()
-            
+
         } catch {
-            print("Failed to save expense:", error)
+            print("❌ Failed to save expense:", error)
         }
     }
 }

@@ -1,12 +1,11 @@
 import Foundation
 
-struct Expense: Identifiable, Decodable {
+struct Expense: Codable, Identifiable {
     let id: UUID
     let title: String
     let totalAmount: Double
-    let paidBy: String
+    let paidBy: UUID
     let createdAt: Date
-    let splits: [ParticipantSplit]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -14,6 +13,5 @@ struct Expense: Identifiable, Decodable {
         case totalAmount = "total_amount"
         case paidBy = "paid_by"
         case createdAt = "created_at"
-        case splits
     }
 }

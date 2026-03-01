@@ -14,6 +14,9 @@ final class APIClient {
     
     private(set) var authToken: String?
     
+    // ✅ Cached logged-in user ID (IMPORTANT FIX)
+    var currentUserId: UUID?
+    
     // MARK: - Authorized Request
     
     private func authorizedRequest(
@@ -72,11 +75,12 @@ final class APIClient {
     
     func logout() {
         authToken = nil
+        currentUserId = nil
         KeychainService.deleteToken()
     }
     
     // MARK: - Fetch Current User
-
+    
     func fetchMe() async throws -> User {
         
         let request = try authorizedRequest(path: "/me")
@@ -89,10 +93,15 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
         
-        return try JSONDecoder().decode(User.self, from: data)
+        let user = try JSONDecoder().decode(User.self, from: data)
+        
+        // ✅ Store user ID for expense creation
+        self.currentUserId = user.id
+        
+        return user
     }
     
-    // MARK: - Fetch Groups
+    // MARK: - Groups
     
     func fetchGroups() async throws -> [Group] {
         let request = try authorizedRequest(path: "/groups/")
@@ -123,7 +132,7 @@ final class APIClient {
         }
     }
     
-    // MARK: - Fetch Expenses
+    // MARK: - Expenses
     
     func fetchGroupExpenses(groupId: UUID) async throws -> [Expense] {
         
@@ -139,20 +148,63 @@ final class APIClient {
             throw URLError(.badServerResponse)
         }
         
-        return try JSONDecoder().decode([Expense].self, from: data)
+        let decoder = JSONDecoder()
+
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateStr = try container.decode(String.self)
+
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+
+            if let date = formatter.date(from: dateStr) {
+                return date
+            }
+
+            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            if let date = formatter.date(from: dateStr) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format"
+            )
+        }
+
+        return try decoder.decode([Expense].self, from: data)
     }
-    
-    // MARK: - Create Expense (UPDATED UUID VERSION)
     
     func createExpense(
         groupId: UUID,
         title: String,
         totalAmount: Double,
-        paidBy: UUID,
-        splits: [(userId: UUID, amount: Double)]
+        paidBy: UUID? = nil,
+        splits: [(userId: UUID, amount: Double)]? = nil
     ) async throws {
         
-        let splitsBody = splits.map {
+        print("🚀 createExpense called")
+        
+        // 🔥 Ensure we have user ID
+        if currentUserId == nil {
+            print("⚠️ currentUserId missing, fetching user...")
+            _ = try await fetchMe()
+        }
+        
+        guard let userId = currentUserId else {
+            print("❌ Still no user ID")
+            throw URLError(.userAuthenticationRequired)
+        }
+        
+        let finalPaidBy = paidBy ?? userId
+        
+        let finalSplits = splits ?? [
+            (userId: userId, amount: totalAmount)
+        ]
+        
+        let splitsBody = finalSplits.map {
             [
                 "user_id": $0.userId.uuidString,
                 "amount": $0.amount
@@ -166,28 +218,32 @@ final class APIClient {
                 "group_id": groupId.uuidString,
                 "title": title,
                 "total_amount": totalAmount,
-                "paid_by": paidBy.uuidString,
+                "paid_by": finalPaidBy.uuidString,
                 "splits": splitsBody
             ]
         )
         
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
         checkForUnauthorized(response)
+        
+        if let http = response as? HTTPURLResponse {
+            print("Create Expense Status:", http.statusCode)
+        }
+        if let body = String(data: data, encoding: .utf8) {
+            print("Create Expense Response:", body)
+        }
         
         guard let http = response as? HTTPURLResponse,
               (200...299).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
         }
     }
-    
     // MARK: - Fairness
     
     func fetchGroupFairness(groupId: UUID) async throws -> FairnessResponse {
-        
         let request = try authorizedRequest(
             path: "/groups/\(groupId.uuidString)/fairness"
         )
-        
         let (data, response) = try await URLSession.shared.data(for: request)
         checkForUnauthorized(response)
         
@@ -202,11 +258,9 @@ final class APIClient {
     // MARK: - Settlements
     
     func fetchGroupSettlements(groupId: UUID) async throws -> [SplitResult] {
-        
         let request = try authorizedRequest(
             path: "/groups/\(groupId.uuidString)/settlements"
         )
-        
         let (data, response) = try await URLSession.shared.data(for: request)
         checkForUnauthorized(response)
         
@@ -218,17 +272,9 @@ final class APIClient {
         return try JSONDecoder().decode([SplitResult].self, from: data)
     }
     
-    private func checkForUnauthorized(_ response: URLResponse) {
-        if let http = response as? HTTPURLResponse,
-           http.statusCode == 401 {
-            self.logout()
-            onUnauthorized?()
-        }
-    }
-    // MARK: - Update Profile
-
+    // MARK: - Profile
+    
     func updateProfile(name: String, email: String) async throws -> User {
-
         let request = try authorizedRequest(
             path: "/auth/update-profile",
             method: "PUT",
@@ -237,21 +283,19 @@ final class APIClient {
                 "email": email
             ]
         )
-
+        
         let (data, response) = try await URLSession.shared.data(for: request)
         checkForUnauthorized(response)
-
+        
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
-
+        
         return try JSONDecoder().decode(User.self, from: data)
     }
-    // MARK: - Change Password
-
+    
     func changePassword(currentPassword: String, newPassword: String) async throws {
-
         let request = try authorizedRequest(
             path: "/auth/change-password",
             method: "POST",
@@ -260,98 +304,85 @@ final class APIClient {
                 "new_password": newPassword
             ]
         )
-
+        
         let (_, response) = try await URLSession.shared.data(for: request)
         checkForUnauthorized(response)
-
-        guard let http = response as? HTTPURLResponse,
-              http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
-        }
-    }
-    // MARK: - Forgot Password
-
-    func forgotPassword(email: String) async throws {
-
-        let url = baseURL.appending(path: "/auth/forgot-password")
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "email": email
-        ])
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let http = response as? HTTPURLResponse,
-              http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
-        }
-    }
-    // MARK: - Delete Account
-
-    func deleteAccount() async throws {
-
-        let request = try authorizedRequest(
-            path: "/auth/delete-account",
-            method: "DELETE"
-        )
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-        checkForUnauthorized(response)
-
+        
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
     }
     
-    // MARK: - Reset Password
-
-    func resetPassword(token: String, newPassword: String) async throws {
-
-        let url = baseURL.appending(path: "/auth/reset-password")
-
+    func forgotPassword(email: String) async throws {
+        let url = baseURL.appending(path: "/auth/forgot-password")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["email": email])
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+    
+    func resetPassword(token: String, newPassword: String) async throws {
+        let url = baseURL.appending(path: "/auth/reset-password")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "token": token,
             "new_password": newPassword
         ])
-
+        
         let (_, response) = try await URLSession.shared.data(for: request)
-
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
     }
     
-    // MARK: - Register
-
+    func deleteAccount() async throws {
+        let request = try authorizedRequest(
+            path: "/auth/delete-account",
+            method: "DELETE"
+        )
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        checkForUnauthorized(response)
+        
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+    }
+    
     func register(name: String, email: String, password: String) async throws {
-
         let url = baseURL.appending(path: "/auth/register")
-
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "name": name,
             "email": email,
             "password": password
         ])
-
+        
         let (_, response) = try await URLSession.shared.data(for: request)
-
         guard let http = response as? HTTPURLResponse,
               http.statusCode == 200 else {
             throw URLError(.badServerResponse)
+        }
+    }
+    
+    private func checkForUnauthorized(_ response: URLResponse) {
+        if let http = response as? HTTPURLResponse,
+           http.statusCode == 401 {
+            logout()
+            onUnauthorized?()
         }
     }
 }

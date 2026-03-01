@@ -8,18 +8,21 @@ def calculate_balances(expenses: List[dict]) -> Dict[str, float]:
     positive = overpaid
     negative = underpaid
     """
+
     paid = defaultdict(float)
     owed = defaultdict(float)
 
     for expense in expenses:
-        paid[expense["paid_by"]] += expense["total_amount"]
+        payer = expense["paid_by"]
+        paid[payer] += expense["total_amount"]
 
         for split in expense["splits"]:
-            owed[split["name"]] += split["amount"]
+            user_id = split["user_id"]
+            owed[user_id] += split["amount"]
 
     balances = {}
-    for person in set(paid) | set(owed):
-        balances[person] = round(paid[person] - owed[person], 2)
+    for user in set(paid) | set(owed):
+        balances[user] = round(paid[user] - owed[user], 2)
 
     return balances
 

@@ -114,6 +114,7 @@ struct LoginView: View {
         }
     }
 
+    // 🔥 UPDATED LOGIN FUNCTION
     private func login() {
         guard !email.isEmpty, !password.isEmpty else { return }
 
@@ -122,10 +123,16 @@ struct LoginView: View {
 
         Task {
             do {
+                // 1️⃣ Login (gets JWT)
                 try await APIClient.shared.login(email: email, password: password)
+
+                // 2️⃣ 🔥 VERY IMPORTANT — fetch user to set currentUserId
+                _ = try await APIClient.shared.fetchMe()
+
                 await MainActor.run {
                     appState.isLoggedIn = true
                 }
+
             } catch {
                 await MainActor.run {
                     errorMessage = "Invalid email or password"
